@@ -1,0 +1,396 @@
+@charset "UTF-8";
+/*
+ * Taken from https://www.superspace.nl:48500/yochi/ as placeholder styling.
+ */
+
+/*
+ * Copyright (c) 2014 Chris Smeele
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+/* Font faces {{{ */
+
+@font-face {
+	font-family: 'Open Sans';
+	font-style: normal;
+	font-weight: 400;
+	src: local('Open Sans'), local('OpenSans'), url(/static/font/OpenSans-Regular.woff) format('woff');
+}
+@font-face {
+	font-family: 'Open Sans';
+	font-style: normal;
+	font-weight: 700;
+	src: local('Open Sans Bold'), local('OpenSans-Bold'), url(/static/font/OpenSans-Bold.woff) format('woff');
+}
+@font-face {
+	font-family: 'Open Sans';
+	font-style: italic;
+	font-weight: 400;
+	src: local('Open Sans Italic'), local('OpenSans-Italic'), url(/static/font/OpenSans-Italic.woff) format('woff');
+}
+@font-face {
+	font-family: 'Open Sans';
+	font-style: italic;
+	font-weight: 700;
+	src: local('Open Sans Bold Italic'), local('OpenSans-BoldItalic'), url(/static/font/OpenSans-BoldItalic.woff) format('woff');
+}
+
+/* }}} */
+/* Reset CSS {{{ */
+
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+	margin:         0;
+	padding:        0;
+	border:         0;
+	font-size:      100%;
+	font:           inherit;
+	vertical-align: baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure, 
+footer, header, hgroup, menu, nav, section {
+	display: block;
+}
+body {
+	line-height: 1;
+}
+ol, ul {
+	list-style: none;
+}
+blockquote, q {
+	quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+	content: '';
+	content: none;
+}
+table {
+	border-collapse: collapse;
+	border-spacing:  0;
+}
+/* Only Chrome does this */
+*:focus {
+	outline: 0;
+}
+/* Firefox default css hinders button styling */
+input::-moz-focus-inner,
+button::-moz-focus-inner
+{
+	border:  0;
+	padding: 0;
+}
+
+/* }}} */
+/* Other resets {{{ */
+
+* {
+	        box-sizing: border-box;
+	   -moz-box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+}
+
+/* }}} */
+/* html/body styling {{{ */
+
+html {
+	width:     100%;
+	font-size: 62.5%;
+	        text-size-adjust: 100%;
+	    -ms-text-size-adjust: 100%;
+	   -moz-text-size-adjust: 100%;
+	-webkit-text-size-adjust: 100%;
+	-webkit-touch-callout: none;
+}
+
+body {
+	width:       100%;
+	font-family: "Open Sans", Verdana, Arial, sans-serif;
+	font-size:   1.6rem;
+	text-align:  center;
+
+	background-color: #fafafa;
+	color:            #222;
+}
+
+/* }}} */
+/* Base page styling {{{ */
+
+body > header {
+	background: #eaeaba;
+
+	font-size:   1.6rem;
+}
+
+body > section.content {
+	text-align: left;
+	margin: 0 auto;
+	max-width: 900px;
+
+	font-size:   1.6rem;
+}
+
+/* }}} */
+/* Default element styling {{{ */
+/*   Headers {{{ */
+
+h1,
+h2,
+h3,
+h4
+{
+}
+h1 {
+	margin-top:     2.0rem;
+	margin-bottom:  1.5rem;
+	padding-top:    0.0rem;
+	padding-bottom: 0.6rem;
+	border-bottom:  1px solid #aaa;
+	font-size:      2.8rem;
+
+	text-shadow: rgba(20,20,20,0.4) 0px 1px 1px;
+}
+h2 {
+	margin-top:     1.5rem;
+	margin-bottom:  1.2rem;
+	padding-top:    0.0rem;
+	padding-bottom: 0.0rem;
+	font-size: 2.5rem;
+}
+h3 {
+	margin-top:     1.0rem;
+	margin-bottom:  0.3rem;
+	padding-top:    0.0rem;
+	font-size: 2.1rem;
+
+	color: #555;
+}
+
+/* }}} */
+/* Links {{{ */
+
+a {
+	text-decoration: none;
+	color: #00b;
+}
+
+a:hover {
+	color: #44e;
+}
+
+a:active {
+	color: #00b;
+}
+
+a:visited {
+	color: #00b;
+}
+
+header > a         > h2,
+header > a:hover   > h2,
+header > a:active  > h2,
+header > a:visited > h2
+{
+	color: #222;
+}
+
+/* }}} */
+/* Form elements {{{ */
+
+input,
+button,
+.button,
+.button:link,
+.button:visited
+{
+	margin:  0;
+	padding: 0.2rem 0.3rem;
+	line-height: normal;
+	font-size:   1.4rem;
+	font-family: inherit;
+	border-radius: 1px;
+}
+input[type="text"],
+input[type="password"],
+input[type="number"]
+{
+	border: 1px solid #aaa;
+	padding-left:  0.3rem;
+	padding-right: 0.3rem;
+	background-color: #fff;
+	box-shadow:       inset 1px 2px 1px rgba(0,0,0,0.06);
+}
+
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+button,
+.button,
+.button:link,
+.button:visited
+{
+	border:  0.1rem solid #aaa;
+	padding: 0.2rem 1.4rem;
+	/*cursor:  pointer;*/
+	cursor:  default;
+	text-align: center;
+	background-color: #d4d4d4;
+	color:            #222;
+	box-shadow:       inset 0 0 1px 1px #eee;
+}
+
+input[type="button"]:hover,
+input[type="submit"]:hover,
+input[type="reset"]:hover,
+button:hover,
+.button:hover
+{
+	border: 0.1rem solid #aaa;
+	background-color: #ddd;
+	box-shadow:       inset 0 0 1px 1px #fff;
+}
+
+input[type="button"]:active,
+input[type="submit"]:active,
+input[type="reset"]:active,
+button:active,
+.button:active
+{
+	border:  0.1rem solid #777;
+	padding: 0.3rem 1.3rem 0.1rem 1.5rem;
+	background-color: #bbb;
+	box-shadow:       inset 0 0 1px 1px rgba(4,4,4,0.12);
+}
+
+input[type="button"].small,
+input[type="submit"].small,
+input[type="reset"].small,
+button.small,
+.button.small,
+.button.small:link,
+.button.small:visited
+{
+	padding: 0.2rem 0.2rem;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus
+{
+	border:     1px solid #6b1e0c;
+	box-shadow: inset 1px 2px 2px rgba(0,0,0,0.12);
+}
+
+/* }}} */
+/* Forms {{{ */
+
+form.nice {
+	display: block;
+}
+
+form.nice label:not(.button):not(.for-checkbox) {
+	line-height: 2.5rem;
+}
+
+form.nice label.for-checkbox {
+	padding-left: 0.2rem;
+}
+
+form.nice > div {
+	overflow: hidden;
+	clear:    both;
+	padding-bottom: 0.4rem;
+}
+form.nice > div:last-child {
+	padding-bottom: 0;
+}
+
+form.nice .row {
+	margin-top:    4px;
+	margin-bottom: 4px;
+}
+
+form.nice .row > input,
+form.nice .row > select,
+form.nice .row > .select2
+{
+	display: block;
+	float:   left;
+}
+
+form.nice .row > label {
+	display: block;
+	float:   left;
+	height: 2.5rem;
+	line-height: 2.5rem;
+}
+
+/* */
+
+form.nice .row > label {
+	width: 40%;
+}
+
+form.nice input[type="text"],
+form.nice input[type="password"],
+form.nice input[type="number"],
+form.nice select,
+form.nice .select2
+{
+	width: 60%;
+}
+
+form.nice.div60 .row > label {
+	width: 60%;
+}
+
+form.nice.div60 input[type="text"],
+form.nice.div60 input[type="password"],
+form.nice.div60 input[type="number"],
+form.nice.div60 select,
+form.nice.div60 .select2
+{
+	width: 40%;
+}
+
+/* */
+
+form.nice .checkgroup label {
+	padding-right: 1.0rem;
+}
+
+form.nice input[type="submit"] {
+	/* margin-left: 40%; */
+}
+
+/* }}} */
+/* }}} */

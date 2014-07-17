@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block page_includes -%}
+	<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/form.css') }}" />
+	<script type="text/javascript" src="{{ url_for('static', filename='js/form.js') }}"></script>
+	<script type="text/javascript">
+		"use strict";
+		var formLevels = [
+			{% for level in accesslevels -%}
+			'{{ level.name }}',
+			{% endfor -%}
+		];
+		var formLevelIndex  = '{{ accesslevel_index }}';
+		var formLevel       = formLevels[formLevelIndex];
+
+		var Config = {
+			hideDisabledComponents: true
+		};
+	</script>
+{% endblock -%}
+{% block content -%}
+<section class="content-form">
+	<header>
+		<h1>Form</h1>
+	</header>
+
+	<ul class="levelchooser">
+		{% for level in accesslevels %}
+		<li class="level-{{ level.name }}{% if level.name == accesslevels[accesslevel_index].name %} selected{% endif %}"
+			style="width: {{ 100 / (accesslevels | length) }}%"
+			data-name="{{ level.name }}"
+			>
+			{{ level.label }}
+		</li>
+		{% endfor -%}
+	</ul>
+
+	<form class="nice div60" method="post">
+	{% for component in model recursive -%}
+		<div class="row{% if component.accesslevel %} level-{{ component.accesslevel }}{% endif %}">
+		{% if component.type == 'block' -%}
+			<section>
+				<header>
+					{{ component.label }}
+				</header>
+				{{ loop(component.children) -}}
+			</section>
+		{% elif component.type == 'parameter' -%}
+			<label for="f_{{ component.name }}" title="({{ component.datatype }}) {{ component.name }}">{{ component.label or component.name }}</label>
+			{% if component.datatype == 'choice' -%}
+				{% if component.options | length > config.FRONTEND_RADIO_MAX -%}
+					<select id="f_{{ component.name }}" name="{{ component.name }}">
+					{% for option in component.options -%}
+						<option value="{{ option }}"{% if component.default == option %} selected{% endif %}>{{ option }}</option>
+					{% endfor -%}
+					</select>
+				{% else -%}
+					<div class="checkgroup">
+					{% for option in component.options -%}
+						<input id="f_{{ component.name }}_{{ loop.index}}" value="{{ option }}" name="{{ component.name }}" type="radio"{% if component.default == option %} checked{% endif %} />
+						<label for="f_{{ component.name }}_{{ loop.index}}">{{ option }}</label>
+					{% endfor -%}
+					</div>
+				{% endif -%}
+			{% else -%}
+				{% if component.datatype == 'int' -%}
+					{% set pattern = '\d*' -%}
+				{% elif component.datatype == 'float' -%}
+					{% set pattern = '[0-9.]*' -%}
+				{% else -%}
+					{% set pattern = '.*' -%}
+				{% endif -%}
+				<input id="f_{{ component.name }}" name="{{ component.name }}" type="text" value="{{ component.default }}" pattern="{{ pattern }}" />
+			{% endif -%}
+		{% elif component.type == 'paragraph' -%}
+			<p class="documentation">
+				{{ component.text }}
+			</p>
+		{% endif -%}
+		</div>
+	{% endfor -%}
+	<div class="align-center">
+		<input type="submit" />
+	</div>
+	</form>
+</section>
+{% endblock %}
