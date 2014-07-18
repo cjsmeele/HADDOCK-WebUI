@@ -1,4 +1,5 @@
 *~
 *.swp
 *.pyc
-res/*
+/res/*
+/log/*

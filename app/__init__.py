@@ -8,7 +8,7 @@ def create_app(config_name):
     app.config.from_object(config[config_name])
     config[config_name].init_app(app)
 
-    handler = RotatingFileHandler('frontend.log', maxBytes=4*1024**2, backupCount=1)
+    handler = RotatingFileHandler('log/server.log', maxBytes=4*1024**2, backupCount=1)
     handler.setLevel(logging.WARNING)
     app.logger.addHandler(handler)
 
