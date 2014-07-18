@@ -55,9 +55,10 @@ form.nice section > :not(header) {
 form.nice section header {
 	display: block;
 	padding: 5px;
+	padding-left: 8px;
 	border-bottom: 1px solid #6b1e0c;
 
-	cursor: default;
+	cursor: pointer;
 	background-color: #6b1e0c;
 	box-shadow: 0 0 3px 1px rgba(255,255,255,0.2) inset;
 	color: #ffffff;
@@ -66,4 +67,8 @@ form.nice section header {
 
 form.nice .disabled {
 	color: #aaa;
+}
+
+form.nice section.folded .content {
+	/* display: none; Do this with JS instead */
 }

@@ -40,9 +40,12 @@
 		{% if component.type == 'block' -%}
 			<section>
 				<header>
+					<i class="togglebutton float-right fa fa-fw fa-lg fa-angle-double-down"></i>
 					{{ component.label }}
 				</header>
-				{{ loop(component.children) -}}
+				<div class="content">
+					{{ loop(component.children) -}}
+				</div>
 			</section>
 		{% elif component.type == 'parameter' -%}
 			<label for="f_{{ component.name }}" title="({{ component.datatype }}) {{ component.name }}">{{ component.label or component.name }}</label>
