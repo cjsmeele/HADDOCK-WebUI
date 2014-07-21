@@ -56,7 +56,7 @@ $(function(){
 				+ ' <i class="fa fa-warning"></i>'
 				+ ' Warning: Because your current access level is not high enough for the ' + name + ' interface,'
 				+ ' you will be unable to submit this form.'
-				+ ' Please <a href="mailto:/dev/null">request a higher access level</a> or use a different form level.'
+				+ ' Please <a href="mailto:/dev/null">request a higher access level</a> or choose a different form level above.'
 				+ '</p>'
 			);
 			$('.levelwarning').slideDown(120);
@@ -95,6 +95,14 @@ $(function(){
 
 	$('#haddockform .parameter').change(function(e){
 		formHasChanged = true;
+	});
+
+	$('#haddockform input[type="text"]').focus(function(e){
+		$(this).one('mouseup', function(){
+			$(this).select();
+			return false;
+		})
+		$(this).select();
 	});
 
 	setLevel(formLevel, true);

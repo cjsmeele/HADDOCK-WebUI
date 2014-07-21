@@ -135,7 +135,7 @@ html {
 body {
 	width:       100%;
 	font-family: "Open Sans", Verdana, Arial, sans-serif;
-	font-size:   16px;
+	font-size:   14px;
 	text-align:  center;
 
 	background-color: #fafafa;
@@ -148,7 +148,7 @@ body {
 body > header {
 	background: #eaeaba;
 
-	font-size:   16px;
+	font-size:   14px;
 }
 
 body > section.content {
@@ -156,7 +156,7 @@ body > section.content {
 	margin: 0 auto;
 	max-width: 900px;
 
-	font-size:   16px;
+	font-size:   14px;
 }
 
 /* }}} */
@@ -235,7 +235,7 @@ button,
 	margin:  0;
 	padding: 2px 3px;
 	line-height: normal;
-	font-size:   14px;
+	font-size:   12px;
 	font-family: inherit;
 	border-radius: 1px;
 }
@@ -344,6 +344,8 @@ form.nice > div:last-child {
 	padding-bottom: 0;
 }
 
+/* Overridden by form.css {{{ */
+
 form.nice .row {
 	margin-top:    4px;
 	margin-bottom: 4px;
@@ -369,6 +371,8 @@ form.nice .row > label {
 form.nice .row > label {
 	width: 40%;
 }
+
+/* }}} */
 
 form.nice input[type="text"],
 form.nice input[type="password"],

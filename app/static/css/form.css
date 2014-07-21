@@ -4,7 +4,7 @@ div.warning,
 div.error {
 	margin: 10px 0;
 	padding: 5px;
-	font-size: 14px;
+	font-size: 12px;
 	border-radius: 2px;
 }
 
@@ -100,4 +100,42 @@ form.nice .disabled {
 
 form.nice section.folded .content {
 	/* display: none; Do this with JS instead */
+}
+
+form .row {
+	border-top: 1px solid #e0e0e0;
+}
+
+form .row:first-child {
+	border-top: none;
+}
+
+form.nice .row {
+	margin-top: 0;
+	margin-bottom: 0;
+	padding-top:    4px;
+	padding-bottom: 4px;
+}
+
+form.nice .row > input,
+form.nice .row > select,
+form.nice .row > .select2
+{
+	margin-top: 1px;
+	margin-bottom: 1px;
+	display: block;
+	float:   left;
+}
+
+form.nice .row > label {
+	display: block;
+	float:   left;
+	height: 25px;
+	line-height: 25px;
+}
+
+/* */
+
+form.nice .row > label {
+	width: 40%;
 }
