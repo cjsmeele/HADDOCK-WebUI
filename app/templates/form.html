@@ -71,7 +71,7 @@
 			{% if component.datatype == 'choice' -%}
 				{# Render radio buttons or a dropdown depending on the amount of options #}
 				{% if component.options | length > config.FRONTEND_RADIO_MAX -%}
-					<select id="f_{{ component.name }}" name="{{ component.name }}" data-default="{{ component.default }}">
+					<select class="parameter" id="f_{{ component.name }}" name="{{ component.name }}" data-default="{{ component.default }}">
 					{% for option in component.options -%}
 						<option value="{{ option }}"{% if component.default == option %} selected{% endif %}>{{ option }}</option>
 					{% endfor -%}
@@ -79,7 +79,7 @@
 				{% else -%}
 					<div class="checkgroup" data-default="{{ component.default }}">
 					{% for option in component.options -%}
-						<input id="f_{{ component.name }}_{{ loop.index}}" value="{{ option }}" name="{{ component.name }}" type="radio"{% if component.default == option %} checked{% endif %} />
+						<input class="parameter" id="f_{{ component.name }}_{{ loop.index}}" value="{{ option }}" name="{{ component.name }}" type="radio"{% if component.default == option %} checked{% endif %} />
 						<label for="f_{{ component.name }}_{{ loop.index}}">{{ option }}</label>
 					{% endfor -%}
 					</div>
@@ -93,7 +93,7 @@
 				{% else -%}
 					{% set pattern = '.*' -%}
 				{% endif -%}
-				<input id="f_{{ component.name }}" name="{{ component.name }}" type="text" value="{{ component.default }}" pattern="{{ pattern }}" data-default="{{ component.default }}" />
+				<input class="parameter" id="f_{{ component.name }}" name="{{ component.name }}" type="text" value="{{ component.default }}" pattern="{{ pattern }}" data-default="{{ component.default }}" />
 			{% endif -%}
 		{% elif component.type == 'paragraph' -%}
 			<p class="documentation">

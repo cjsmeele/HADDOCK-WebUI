@@ -1,14 +1,39 @@
 "use strict";
 
 $(function(){
-	function setLevel(name){
+	var formHasChanged   = false;
+	var formLevelTooHigh = false;
+
+	function setLevel(name, force){
+		if(
+				$('.levelchooser li.selected')[0] === $('.levelchooser li.level-'+name)[0]
+				&& force !== true
+			){
+			// We are already at the right level
+			return;
+		}
+
+		if(!formLevelTooHigh && formLevels.indexOf(name) < formLevelIndex && formHasChanged){
+			// Because lower form levels hide certain fields, the user may lose
+			// filled in data by switching to a lower form level.
+			// Although we do not reset input fields, we should warn the user
+			// that some parameters may not be saved.
+			// Of course, we filter submitted fields based on access level on the server side as well
+			if(!confirm(
+					'You may lose filled in parameters by switching to a lower form level.'
+					+ "\nAre you sure you want to switch to the " + name + ' form?'
+				)){
+				return;
+			}
+		}
+
 		$('.levelchooser li.selected').removeClass('selected');
 		$('.levelchooser li.level-'+name).addClass('selected');
 
-		formLevel = formLevels.indexOf(name);
+		formLevelIndex = formLevels.indexOf(name);
 
 		for(var i=0; i<formLevels.length; i++){
-			if(i <= formLevel){
+			if(i <= formLevelIndex){
 				$('#haddockform .level-'+formLevels[i]).removeClass('disabled');
 				$('#haddockform .level-'+formLevels[i]+' input').prop('disabled', false);
 
@@ -23,7 +48,9 @@ $(function(){
 			}
 		}
 
-		if(formLevel > userLevel){
+		if(formLevelIndex > userLevel){
+			formLevelTooHigh = true;
+
 			$('.levelwarning').html(
 				'<p>'
 				+ ' <i class="fa fa-warning"></i>'
@@ -35,6 +62,8 @@ $(function(){
 			$('.levelwarning').slideDown(120);
 			$('#haddockform input[type="submit"]').prop('disabled', true);
 		}else{
+			formLevelTooHigh = false;
+
 			$('.levelwarning').slideUp(120);
 			$('#haddockform input[type="submit"]').prop('disabled', false);
 		}
@@ -64,5 +93,9 @@ $(function(){
 		toggleSection($(this).parent('section')[0]);
 	});
 
-	setLevel(formLevel);
+	$('#haddockform .parameter').change(function(e){
+		formHasChanged = true;
+	});
+
+	setLevel(formLevel, true);
 });
