@@ -113,27 +113,27 @@
 .vpad {
 }
 
-.height10 { min-height: 10rem; height: 10rem; }
+.height10 { min-height: 10px; height: 10px; }
 
 @media only screen
 and (max-width : 719px)
 {
-	.height10 { min-height: 1.0rem; height: 1.0rem; }
+	.height10 { min-height: 10px; height: 10px; }
 }
 
 @media only screen
 and (min-width : 720px)
 and (max-width : 979px)
 {
-	.height10 { min-height: 4.0rem; height: 4.0rem; }
+	.height10 { min-height: 40px; height: 40px; }
 }
 
 /* Grid */
 .row { width: 100%; overflow: hidden; }
 
        .column             { min-height: 1px; float: left; }
-section.column             { padding-left:  1.0rem;
-                             padding-right: 1.0rem; }
+section.column             { padding-left:  10px;
+                             padding-right: 10px; }
 section.column:first-child { padding-left:  0; }
 section.column:last-child  { padding-right: 0; }
 
