@@ -9,18 +9,34 @@ $(function(){
 
 		for(var i=0; i<formLevels.length; i++){
 			if(i <= formLevel){
-				$('form .level-'+formLevels[i]).removeClass('disabled');
-				$('form .level-'+formLevels[i]+" input").prop('disabled', false);
+				$('#haddockform .level-'+formLevels[i]).removeClass('disabled');
+				$('#haddockform .level-'+formLevels[i]+' input').prop('disabled', false);
 
 				if(Config.hideDisabledComponents)
-					$('form .level-'+formLevels[i]).slideDown(120);
+					$('#haddockform .level-'+formLevels[i]).slideDown(120);
 			}else{
-				$('form .level-'+formLevels[i]).addClass('disabled');
-				$('form .level-'+formLevels[i]+" input").prop('disabled', true);
+				$('#haddockform .level-'+formLevels[i]).addClass('disabled');
+				$('#haddockform .level-'+formLevels[i]+' input').prop('disabled', true);
 
 				if(Config.hideDisabledComponents)
-					$('form .level-'+formLevels[i]).slideUp(120);
+					$('#haddockform .level-'+formLevels[i]).slideUp(120);
 			}
+		}
+
+		if(formLevel > userLevel){
+			$('.levelwarning').html(
+				'<p>'
+				+ ' <i class="fa fa-warning"></i>'
+				+ ' Warning: Because your current access level is not high enough for the ' + name + ' interface,'
+				+ ' you will be unable to submit this form.'
+				+ ' Please <a href="mailto:/dev/null">request a higher access level</a> or use a different form level.'
+				+ '</p>'
+			);
+			$('.levelwarning').slideDown(120);
+			$('#haddockform input[type="submit"]').prop('disabled', true);
+		}else{
+			$('.levelwarning').slideUp(120);
+			$('#haddockform input[type="submit"]').prop('disabled', false);
 		}
 	}
 
@@ -42,10 +58,9 @@ $(function(){
 
 	$('.levelchooser li').click(function(e){
 		setLevel($(this).data('name'));
-		e.preventDefault();
 	});
 
-	$('form section > header').click(function(e){
+	$('#haddockform section > header').click(function(e){
 		toggleSection($(this).parent('section')[0]);
 	});
 

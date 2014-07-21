@@ -1,5 +1,23 @@
 @charset "UTF-8";
 
+div.warning,
+div.error {
+	margin: 10px 0;
+	padding: 5px;
+	font-size: 14px;
+	border-radius: 2px;
+}
+
+div.warning {
+	background: #eeb;
+	border: 1px solid #cc6;
+}
+
+div.error {
+	background: #ebb;
+	border: 1px solid #c66;
+}
+
 .levelchooser {
 	display: block;
 	margin-bottom: 14px;
@@ -21,14 +39,25 @@
 	text-shadow: rgba(0,0,0,0.6) 1px 1px 1px;
 	box-shadow: 0 0 3px 1px rgba(255,255,255,0.2) inset;
 }
+
 .levelchooser li:first-child {
 	border-left: 1px solid #6b1e0c;
 }
+
 .levelchooser li:hover {
 	background: #7b2e1c;
 }
 .levelchooser li.selected {
 	background: #9b4e3c;
+}
+.levelchooser li.too-high {
+	background: #8b4030;
+	color: #999;
+	text-shadow: none;
+}
+.levelchooser li.too-high:hover,
+.levelchooser li.too-high.selected {
+	background: #9b5e4c;
 }
 
 form .documentation {
@@ -47,7 +76,7 @@ form.nice section {
 	box-shadow: 0 0 2px 1px rgba(0,0,0,0.2);
 }
 
-form.nice section > :not(header) {
+form.nice section > .content {
 	padding-left: 8px;
 	padding-right: 8px;
 }

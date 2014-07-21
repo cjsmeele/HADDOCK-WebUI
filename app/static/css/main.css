@@ -204,7 +204,7 @@ a {
 }
 
 a:hover {
-	color: #44e;
+	text-decoration: underline;
 }
 
 a:active {
@@ -308,6 +308,16 @@ input[type="number"]:focus
 {
 	border:     1px solid #6b1e0c;
 	box-shadow: inset 1px 2px 2px rgba(0,0,0,0.12);
+}
+
+input[type="button"]:disabled,
+input[type="submit"]:disabled,
+input[type="reset"]:disabled,
+button:disabled
+{
+	background-color: #b0b0b0;
+	color: #ddd;
+	box-shadow: inset 0px 0px 2px rgba(255,255,255,0.4);
 }
 
 /* }}} */

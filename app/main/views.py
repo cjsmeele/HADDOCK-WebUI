@@ -34,5 +34,12 @@ def form(level):
     else:
         raise RequestError('Unknown access level specified')
 
-    return render_template("form.html", accesslevels=accesslevels, accesslevel_index=accesslevel_index, model=model)
+    return render_template(
+        'form.html',
+        title='HADDOCK Form',
+        accesslevels=accesslevels,
+        accesslevel_index=accesslevel_index,
+        model=model,
+        user_accesslevel_index=2 # TODO: Get this information through auth
+    )
 

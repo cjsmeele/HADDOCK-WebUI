@@ -9,8 +9,9 @@
 			'{{ level.name }}',
 			{% endfor -%}
 		];
-		var formLevelIndex  = '{{ accesslevel_index }}';
-		var formLevel       = formLevels[formLevelIndex];
+		var formLevelIndex = '{{ accesslevel_index }}';
+		var formLevel      = formLevels[formLevelIndex];
+		var userLevel      = '{{ user_accesslevel_index }}';
 
 		var Config = {
 			hideDisabledComponents: true
@@ -20,21 +21,37 @@
 {% block content -%}
 <section class="content-form">
 	<header>
-		<h1>Form</h1>
+		<h1>HADDOCK Form</h1>
 	</header>
+
+	<noscript>
+		<div class="warning">
+			<p><i class="fa fa-warning"></i>
+				JavaScript appears to be disabled in your browser. <br />
+				This web application requires JavaScript to enable multiplication of input fields,
+				section folding and form level selection, and will not work correctly without it.
+				Please enable JavaScript support or use a different browser.
+			</p>
+		</div>
+	</noscript>
 
 	<ul class="levelchooser">
 		{% for level in accesslevels %}
-		<li class="level-{{ level.name }}{% if level.name == accesslevels[accesslevel_index].name %} selected{% endif %}"
-			style="width: {{ 100 / (accesslevels | length) }}%"
-			data-name="{{ level.name }}"
+		<li class="level-{{ level.name }}
+				{%- if level.name == accesslevels[accesslevel_index].name %} selected{% endif %}
+				{%- if loop.index0 > user_accesslevel_index %} too-high{% endif %}"
+				style="width: {{ 100 / (accesslevels | length) }}%"
+				data-name="{{ level.name }}"
+				data-index="{{ loop.index0 }}"
 			>
 			{{ level.label }}
 		</li>
 		{% endfor -%}
 	</ul>
 
-	<form class="nice div60" method="post">
+	<div class="levelwarning warning hidden"></div>
+
+	<form id="haddockform" class="nice div60" method="post">
 	{% for component in model recursive -%}
 		<div class="row{% if component.accesslevel %} level-{{ component.accesslevel }}{% endif %}">
 		{% if component.type == 'block' -%}
@@ -50,7 +67,7 @@
 			</section>
 		{% elif component.type == 'parameter' -%}
 			{# Label #}
-			<label for="f_{{ component.name }}" title="({{ component.datatype }}) {{ component.name }}">{{ component.label or component.name }}</label>
+			<label for="f_{{ component.name }}" title="[{{ component.accesslevel }}] ({{ component.datatype }}) {{ component.name }}">{{ component.label or component.name }}</label>
 			{% if component.datatype == 'choice' -%}
 				{# Render radio buttons or a dropdown depending on the amount of options #}
 				{% if component.options | length > config.FRONTEND_RADIO_MAX -%}
