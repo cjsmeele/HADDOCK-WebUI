@@ -18,7 +18,7 @@ $(function(){
 			// filled in data by switching to a lower form level.
 			// Although we do not reset input fields, we should warn the user
 			// that some parameters may not be saved.
-			// Of course, we filter submitted fields based on access level on the server side as well
+			// Of course, we filter submitted fields based on access level on the server side as well.
 			if(!confirm(
 					'You may lose filled in parameters by switching to a lower form level.'
 					+ "\nAre you sure you want to switch to the " + name + ' form?'
@@ -89,20 +89,66 @@ $(function(){
 		setLevel($(this).data('name'));
 	});
 
+	//$('#haddockform section > header .header-text').click(function(e){
 	$('#haddockform section > header').click(function(e){
-		toggleSection($(this).parent('section')[0]);
+		toggleSection($(this).parents('section')[0]);
 	});
 
 	$('#haddockform .parameter').change(function(e){
 		formHasChanged = true;
+
+		if($(this).is('input') || $(this).is('select')){
+			var buttonSet = $('.buttonset[data-for="'+ $(this).attr('id') +'"]');
+			if($(this).val() == $(this).data('default')){
+				buttonSet.find('.reset').addClass('invisible');
+			}else{
+				buttonSet.find('.reset').removeClass('invisible');
+			}
+		}else if($(this).is('.buttongroup')){
+			//buttonSet.find('.reset').removeClass('invisible');
+		}
 	});
 
 	$('#haddockform input[type="text"]').focus(function(e){
+		// Automatically select input element contents on focus
 		$(this).one('mouseup', function(){
 			$(this).select();
 			return false;
 		})
 		$(this).select();
+	});
+
+	$('.buttonset i.reset').click(function(e){
+		var buttonSet = $(this).parent('.buttonset');
+		var input = $('#'+buttonSet.data('for'));
+
+		if(input.is('input[type="text"]')){
+			input.val(input.data('default'));
+		}else if(input.is('select')){
+			input.val(input.data('default'));
+		}else if(input.is('.checkgroup')){
+			// Now let's just hope the default value doesn't contain double quotes...
+			input.find('input[type="radio"][value="' + input.data('default') + '"]').prop('checked', true);
+		}
+
+		$(this).addClass('invisible');
+
+		e.preventDefault();
+		e.stopPropagation();
+	});
+
+	$('.buttonset i.plus').click(function(e){
+		// TODO
+
+		e.preventDefault();
+		e.stopPropagation();
+	});
+
+	$('.buttonset i.minus').click(function(e){
+		// TODO
+
+		e.preventDefault();
+		e.stopPropagation();
 	});
 
 	setLevel(formLevel, true);

@@ -335,7 +335,7 @@ form.nice label.for-checkbox {
 	padding-left: 2px;
 }
 
-form.nice > div {
+form.nice > div.row {
 	overflow: hidden;
 	clear:    both;
 	padding-bottom: 4px;
@@ -373,12 +373,40 @@ form.nice .row > label {
 }
 
 /* }}} */
+/* Fields with a div around input elements {{{ */
 
-form.nice input[type="text"],
-form.nice input[type="password"],
-form.nice input[type="number"],
-form.nice select,
-form.nice .select2
+form.nice .row > .value {
+	display: table;
+	float: left;
+}
+
+form.nice .row > .value > * {
+	display: table-cell;
+	width: 1%; /* Shrink to fit */
+	white-space: nowrap;
+}
+
+form.nice .row > .value > input,
+form.nice .row > .value > input[type="text"],
+form.nice .row > .value > input[type="password"],
+form.nice .row > .value > input[type="number"],
+form.nice .row > .value > select,
+form.nice .row > .value > .select2,
+form.nice .row > .value > .checkgroup
+{
+	display: table-cell;
+	width: 100%;
+}
+
+/* }}} */
+
+form.nice .row > input[type="text"],
+form.nice .row > input[type="password"],
+form.nice .row > input[type="number"],
+form.nice .row > select,
+form.nice .row > .select2,
+form.nice .row > .checkgroup,
+form.nice .row > .value
 {
 	width: 60%;
 }
@@ -387,11 +415,12 @@ form.nice.div60 .row > label {
 	width: 60%;
 }
 
-form.nice.div60 input[type="text"],
-form.nice.div60 input[type="password"],
-form.nice.div60 input[type="number"],
-form.nice.div60 select,
-form.nice.div60 .select2
+form.nice.div60 .row > input[type="text"],
+form.nice.div60 .row > input[type="password"],
+form.nice.div60 .row > input[type="number"],
+form.nice.div60 .row > select,
+form.nice.div60 .row > .select2,
+form.nice.div60 .row > .value
 {
 	width: 40%;
 }

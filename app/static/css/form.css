@@ -87,11 +87,17 @@ form.nice section header {
 	padding-left: 8px;
 	border-bottom: 1px solid #6b1e0c;
 
-	cursor: pointer;
+	cursor: default;
 	background-color: #6b1e0c;
 	box-shadow: 0 0 3px 1px rgba(255,255,255,0.2) inset;
 	color: #ffffff;
 	text-shadow: rgba(0,0,0,0.6) 1px 1px 1px;
+}
+form.nice section header .togglebutton {
+	cursor: pointer;
+}
+form.nice section header span.header-text {
+	cursor: pointer;
 }
 
 form.nice .disabled {
@@ -110,11 +116,21 @@ form .row:first-child {
 	border-top: none;
 }
 
+/* */
 form.nice .row {
 	margin-top: 0;
 	margin-bottom: 0;
 	padding-top:    4px;
 	padding-bottom: 4px;
+}
+
+
+form.nice .row > .value > input,
+form.nice .row > .value > select,
+form.nice .row > .value > .select2
+{
+	margin-top: 1px;
+	margin-bottom: 1px;
 }
 
 form.nice .row > input,
@@ -127,6 +143,20 @@ form.nice .row > .select2
 	float:   left;
 }
 
+form.nice select {
+	height: 23px;
+}
+
+form.nice .checkgroup {
+	padding-left: 8px;
+}
+
+form.nice .row .value {
+	padding-left: 5px;
+	border-left: 1px solid #ddd;
+}
+
+
 form.nice .row > label {
 	display: block;
 	float:   left;
@@ -138,4 +168,33 @@ form.nice .row > label {
 
 form.nice .row > label {
 	width: 40%;
+}
+
+form.nice .parameter-buttons {
+	padding-left: 6px;
+	color: #aaa;
+}
+
+form.nice .parameter-buttons i,
+form.nice .block-buttons i
+{
+	cursor: pointer;
+}
+
+form.nice .parameter-buttons i:hover
+{
+	color: #222;
+}
+
+form.nice .checkgroup label {
+	display: inline-block;
+	min-width: 65px;
+	/*
+	max-width: 65px;
+	*/
+	/*
+	width: 20%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	*/
 }
