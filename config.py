@@ -16,7 +16,7 @@ class Config(object):
     # See http://pythonhosted.org/Flask-Cache/#configuring-flask-cache for other
     # options.
     # Note that some cache backends may need additional configuration parameters
-    # which can't be passed through this config object (yet).
+    # that can't be passed through this config object (yet).
     CACHE_BACKEND = 'simple'
 
 class ConfigDefault(Config):
