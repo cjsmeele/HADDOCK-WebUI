@@ -4,15 +4,10 @@
 	<header>
 		<h1>Hello, world</h1>
 	</header>
-	<p>
-		Pick an interface:
-	</p>
 	<ul>
-		{% for level in accesslevels %}
 		<li>
-			<a href="{{ url_for('form', level=level.name) }}">{{ level.label }} interface</a>
+			<a href="{{ url_for('form') }}">HADDOCK form, any level</a>
 		</li>
-		{% endfor %}
 	</ul>
 </section>
 {% endblock %}

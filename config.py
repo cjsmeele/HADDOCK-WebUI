@@ -7,7 +7,7 @@ class Config(object):
     FRONTEND_MODEL_FILE       = 'res/model.json'
 
     # Turn these off if there is no cache backend available or Flask-Cache is
-    # not installed
+    # not installed.
     CACHE_HTML  = True
     CACHE_MODEL = True
     CACHE_ACCESSLEVELS = CACHE_MODEL
