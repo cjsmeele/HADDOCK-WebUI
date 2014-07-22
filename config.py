@@ -6,10 +6,6 @@ class Config(object):
     FRONTEND_ACCESSLEVEL_FILE = 'res/accesslevels.json'
     FRONTEND_MODEL_FILE       = 'res/model.json'
 
-    @staticmethod
-    def init_app(app):
-        pass
-
 class ConfigDefault(Config):
     pass
 

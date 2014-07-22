@@ -10,7 +10,7 @@
 	<ul>
 		{% for level in accesslevels %}
 		<li>
-			<a href="{{ url_for('main.form', level=level.name) }}">{{ level.label }} interface</a>
+			<a href="{{ url_for('form', level=level.name) }}">{{ level.label }} interface</a>
 		</li>
 		{% endfor %}
 	</ul>
