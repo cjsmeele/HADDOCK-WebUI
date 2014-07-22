@@ -33,18 +33,23 @@ $(function(){
 		formLevelIndex = formLevels.indexOf(name);
 
 		for(var i=0; i<formLevels.length; i++){
+			var leveledEls    = $('#haddockform .level-'+formLevels[i]);
+			var leveledInputs = leveledEls.find('input');
+			// FIXME: Select elements are not disabled
+			//        (Though this is not really a problem, as they _are_ hidden
+			//        and we do server-side checks as well)
 			if(i <= formLevelIndex){
-				$('#haddockform .level-'+formLevels[i]).removeClass('disabled');
-				$('#haddockform .level-'+formLevels[i]+' input').prop('disabled', false);
+				leveledEls.removeClass('disabled');
+				leveledInputs.prop('disabled', false);
 
 				if(Config.hideDisabledComponents)
-					$('#haddockform .level-'+formLevels[i]).slideDown(120);
+					leveledEls.show();
 			}else{
-				$('#haddockform .level-'+formLevels[i]).addClass('disabled');
-				$('#haddockform .level-'+formLevels[i]+' input').prop('disabled', true);
+				leveledEls.addClass('disabled');
+				leveledInputs.prop('disabled', true);
 
 				if(Config.hideDisabledComponents)
-					$('#haddockform .level-'+formLevels[i]).slideUp(120);
+					leveledEls.hide();
 			}
 		}
 
