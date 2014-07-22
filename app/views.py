@@ -12,43 +12,46 @@ class RequestError(Exception):
     pass
 
 
-# TODO: This function should be generalized
-def get_accesslevels():
-    if not hasattr(get_accesslevels, 'lastmtime'):
-        get_accesslevels.lastmtime = 0
+def get_cached_json(key, filename, cache_condition=True, force_renew=False, auto_retry=True):
+    """\
+    Cache a JSON object stored in a file, and only reload it when the file has
+    changed or an update is forced.
 
-    newmtime = os.path.getmtime(app.config['FRONTEND_ACCESSLEVEL_FILE'])
+    If cache_condition is given, it will be checked before trying to access or
+    store data in the cache. This can be used to force an object to always be
+    loaded from a file, for example on systems where Flask-Cache is not installed.
 
-    # Caching is disabled or the access levels file has changed, reload it
-    if newmtime > get_accesslevels.lastmtime or not app.config['CACHE_ACCESSLEVELS']:
-        get_accesslevels.lastmtime = newmtime
-        accesslevels = json.load(file(app.config['FRONTEND_ACCESSLEVEL_FILE']))
-        if app.config['CACHE_ACCESSLEVELS']:
-            cache.set('accesslevels', accesslevels)
+    force_renew does almost the same, but does not prevent the object from
+    being stored in the cache.
 
-    if app.config['CACHE_ACCESSLEVELS']:
-        return cache.get('accesslevels')
+    auto_retry was added in an attempt to fix a bug that seemed to destroy cached
+    JSON data. When retrieved cache data is None, get_cached_json will force a
+    refresh once and continue.
+    """
+    if not hasattr(get_cached_json, 'lastmtimes'):
+        get_cached_json.lastmtimes = {}
+
+    if key not in get_cached_json.lastmtimes:
+        get_cached_json.lastmtimes[key] = 0
+
+    newmtime = os.path.getmtime(filename)
+
+    # Caching is disabled or the file has changed, reload it
+    if force_renew or newmtime > get_cached_json.lastmtimes[key] or not cache_condition:
+        get_cached_json.lastmtimes[key] = newmtime
+        data = json.load(file(filename))
+        if cache_condition:
+            cache.set(key, data)
+
+    if cache_condition:
+        data = cache.get(key)
+        # If this cache object becomes invalid somehow...
+        if data is None and auto_retry:
+            return get_cached_json(key, filename, cache_condition, True, False)
+        else:
+            return data
     else:
-        return accesslevels
-
-def get_model():
-    if not hasattr(get_model, 'lastmtime'):
-        get_model.lastmtime = 0
-
-    newmtime = os.path.getmtime(app.config['FRONTEND_MODEL_FILE'])
-
-    # Caching is disabled or the access levels file has changed, reload it
-    if newmtime > get_model.lastmtime or not app.config['CACHE_MODEL']:
-        get_model.lastmtime = newmtime
-        model = json.load(file(app.config['FRONTEND_MODEL_FILE']))
-        if app.config['CACHE_MODEL']:
-            cache.set('model', model)
-
-    if app.config['CACHE_MODEL']:
-        return cache.get('model')
-    else:
-        return model
-
+        return data
 
 def render_form_template(model, accesslevels, user_accesslevel):
     return render_template(
@@ -77,8 +80,16 @@ def index():
 
 @app.route('/form')
 def form():
-    accesslevels = get_accesslevels()
-    model        = get_model()
+    accesslevels = get_cached_json(
+        'accesslevels',
+        app.config['FRONTEND_ACCESSLEVEL_FILE'],
+        app.config['CACHE_ACCESSLEVELS'],
+    )
+    model = get_cached_json(
+        'model',
+        app.config['FRONTEND_MODEL_FILE'],
+        app.config['CACHE_MODEL'],
+    )
 
     if accesslevels is None or model is None:
         raise ModelFormatError('Could not load model description and/or access levels')
