@@ -92,7 +92,10 @@
 
 	<form id="haddockform" class="nice div60" method="post">
 	{% for component in model recursive -%}
-		<div class="row{% if component.accesslevel %} level-{{ component.accesslevel }}{% endif %}">
+		<div class="row
+			{%- for level in component.accesslevels -%}
+				{# #} level-{{ level }}
+			{%- endfor -%}">
 		{% if component.type == 'block' -%}
 			{# Open a new block -#}
 			<section>

@@ -32,26 +32,19 @@ $(function(){
 
 		formLevelIndex = formLevels.indexOf(name);
 
-		for(var i=0; i<formLevels.length; i++){
-			var leveledEls    = $('#haddockform .level-'+formLevels[i]);
-			var leveledInputs = leveledEls.find('input');
-			// FIXME: Select elements are not disabled
-			//        (Though this is not really a problem, as they _are_ hidden
-			//        and we do server-side checks as well)
-			if(i <= formLevelIndex){
-				leveledEls.removeClass('disabled');
-				leveledInputs.prop('disabled', false);
+		var rowsToHide = $('.row:not([class~="level-' + name + '"]');
+		var rowsToShow = $('.row.level-' + name);
 
-				if(Config.hideDisabledComponents)
-					leveledEls.show();
-			}else{
-				leveledEls.addClass('disabled');
-				leveledInputs.prop('disabled', true);
-
-				if(Config.hideDisabledComponents)
-					leveledEls.hide();
-			}
+		if(Config.hideDisabledComponents){
+			rowsToHide.hide();
+			rowsToShow.show();
 		}
+
+		// FIXME: Select elements are not disabled
+		//        (Though this is not really a problem, as they _are_ hidden
+		//        and we do server-side checks as well)
+		rowsToHide.find('> .value input').prop('disabled', true);
+		rowsToShow.find('> .value input').prop('disabled', false);
 
 		if(formLevelIndex > userLevel){
 			formLevelTooHigh = true;
@@ -145,6 +138,7 @@ $(function(){
 	$('.buttonset i.plus').click(function(e){
 		// TODO
 
+		// Stop click events from reaching the header and folding this section
 		e.preventDefault();
 		e.stopPropagation();
 	});
