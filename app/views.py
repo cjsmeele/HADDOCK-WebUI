@@ -75,7 +75,11 @@ else:
 
 @app.route('/')
 def index():
-    accesslevels = get_accesslevels()
+    accesslevels = get_cached_json(
+        'accesslevels',
+        app.config['FRONTEND_ACCESSLEVEL_FILE'],
+        app.config['CACHE_ACCESSLEVELS'],
+    )
     return render_template("index.html", accesslevels=accesslevels)
 
 @app.route('/form')
