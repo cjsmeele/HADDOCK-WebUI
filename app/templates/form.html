@@ -91,7 +91,7 @@
 	<div class="levelwarning warning hidden"></div>
 
 	<form id="haddockform" class="nice div60" method="post">
-	{% for component in model recursive -%}
+	{% for component in model if not component.hidden recursive -%}
 		<div class="row
 			{%- for level in component.accesslevels -%}
 				{# #} level-{{ level }}
