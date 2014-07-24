@@ -57,12 +57,12 @@ $(function(){
 				+ ' Please <a href="mailto:/dev/null">request a higher access level</a> or choose a different form level above.'
 				+ '</p>'
 			);
-			$('.levelwarning').slideDown(120);
+			$('.levelwarning').slideDown(80);
 			$('#haddockform input[type="submit"]').prop('disabled', true);
 		}else{
 			formLevelTooHigh = false;
 
-			$('.levelwarning').slideUp(120);
+			$('.levelwarning').slideUp(80);
 			$('#haddockform input[type="submit"]').prop('disabled', false);
 		}
 	}
@@ -74,12 +74,12 @@ $(function(){
 			$(toggleButton).removeClass('fa-angle-double-up');
 			$(toggleButton).addClass('fa-angle-double-down');
 			$(section).removeClass('folded');
-			$($(section).find('.content')[0]).slideDown(120);
+			$($(section).find('.content')[0]).slideDown(80);
 		}else{
 			$(toggleButton).removeClass('fa-angle-double-down');
 			$(toggleButton).addClass('fa-angle-double-up');
 			$(section).addClass('folded');
-			$($(section).find('.content')[0]).slideUp(120);
+			$($(section).find('.content')[0]).slideUp(80);
 		}
 	}
 
@@ -92,7 +92,7 @@ $(function(){
 		toggleSection($(this).parents('section')[0]);
 	});
 
-	$('#haddockform .parameter').change(function(e){
+	$('#haddockform .parameter:not([type="file"])').change(function(e){
 		formHasChanged = true;
 
 		if($(this).is('input') || $(this).is('select')){
