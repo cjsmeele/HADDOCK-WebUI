@@ -153,15 +153,15 @@ form.nice .checkgroup {
 
 form.nice .row .value {
 	padding-left: 5px;
-	border-left: 1px solid #ddd;
 }
 
 
 form.nice .row > label {
 	display: block;
 	float:   left;
-	height: 25px;
+	/*height: 25px;*/
 	line-height: 25px;
+	border-right: 1px solid #ddd;
 }
 
 /* */

@@ -362,7 +362,7 @@ form.nice .row > .select2
 form.nice .row > label {
 	display: block;
 	float:   left;
-	height: 25px;
+	min-height: 25px;
 	line-height: 25px;
 }
 
