@@ -28,7 +28,7 @@
 		because one misclick could mean a lot of lost parameters and a lot of
 		unhappy researchers.
 	-#}
-	{# (force printing of the space to the left of 'invisible') #} invisible
+	{##} invisible
 {#- #}"></i>
 {%- endif -%}
 <i class="minus fa fa-fw fa-minus
@@ -37,14 +37,14 @@
 		On page load we always generate the minimum amount of objects;
 		The user shouldn't be able to remove anything they did not add themselves.
 	-#}
-	{# (force printing of the space to the left of 'invisible') #} invisible
+	{##} invisible
 	{#- -#}
 "></i>{# -#}
 <i class="plus fa fa-fw fa-plus
 	{#- -#}
 	{#- But we do need to check whether the user is allowed to add more stuff -#}
 	{%- if not component.repeat or component.repeat_min == component.repeat_max -%}
-		{# (force printing of the space to the left of 'invisible') #} invisible
+		{##} invisible
 	{%- endif -%}
 	{#- -#}
 "></i>{# -#}
@@ -68,16 +68,22 @@
 	</noscript>
 
 	<ul class="levelchooser">
-		{% for level in accesslevels %}
-		<li class="level-{{ level.name }}
-				{%- if level.name == accesslevels[accesslevel_index].name %} selected{% endif %}
-				{%- if loop.index0 > user_accesslevel_index %} too-high{% endif %}"
-				style="width: {{ 100 / (accesslevels | length) }}%"
-				data-name="{{ level.name }}"
-				data-index="{{ loop.index0 }}"
-			>
-			{{ level.label }}
-		</li>
+		{% for level in accesslevels -%}
+			{% set class = level.name -%}
+			{% if level.name == accesslevel_index -%}
+				{% set class = class + ' selected' -%}
+			{% endif -%}
+			{% if loop.index0 > user_accesslevel_index -%}
+				{% set class = class + ' too-high' -%}
+			{% endif -%}
+			<li{{ {
+					'class':      class,
+					'data-name':  level.name,
+					'data-index': loop.index0,
+					'style':      'width: %f%%' | format(100 / (accesslevels | length)),
+					} | xmlattr }}>
+				{{ level.label }}
+			</li>
 		{% endfor -%}
 	</ul>
 
@@ -87,7 +93,7 @@
 	{% for component in model if not component.hidden recursive -%}
 		<div class="row
 			{%- for level in component.accesslevels -%}
-				{# #} level-{{ level }}
+				{##} level-{{ level }}
 			{%- endfor -%}">
 		{% if component.type == 'block' -%}
 			{# Open a new block -#}
@@ -107,28 +113,56 @@
 		{% elif component.type == 'parameter' -%}
 			{# Output a parameter -#}
 			{# First render a label with the correct for attribute -#}
-			<label for="f_{{ component.name }}" title="[{{ component.accesslevel }}] ({{ component.datatype }}) {{ component.name }}">{{ component.label or component.name }}</label>
+			<label{{ {
+					'for':   'f_%s' | format(component.name),
+					'title': '(%s) %s = %s' | format(component.datatype, component.name, component.default),
+					} | xmlattr }}>
+				{{ component.label or component.name }}
+			</label>
 			<div class="value">
 			{% if component.datatype == 'choice' -%}
 				{# For choice parameters, render radio buttons or a dropdown depending on the amount of options -#}
 				{% if component.options | length > config.FRONTEND_RADIO_MAX -%}
-					<select class="parameter" id="f_{{ component.name }}" name="{{ component.name }}" data-default="{{ component.default }}">
-					{% for option in component.options -%}
-						<option value="{{ option }}"{% if component.default == option %} selected{% endif %}>{{ option }}</option>
-					{% endfor -%}
+					<select{{ {
+							'class':        'parameter',
+							'id':           'f_%s' | format(component.name),
+							'name':         component.name,
+							'data-default': component.default,
+							} | xmlattr }}>
+						{% for option in component.options -%}
+						<option{{ {
+								'value': option,
+								'selected': 'selected' if component.default == option else None,
+								} | xmlattr }}>
+							{{ option }}
+						</option>
+						{% endfor -%}
 					</select>
 				{% else -%}
 					{# Render radio buttons instead -#}
 					{# The default value is stored in a data attribute in a container div -#}
 					<div id="f_{{ component.name }}" class="checkgroup" data-default="{{ component.default }}">
 					{% for option in component.options -%}
-						<input class="parameter" id="f_{{ component.name }}_{{ loop.index}}" value="{{ option }}" name="{{ component.name }}" type="radio"{% if component.default == option %} checked{% endif %} />
+						<input{{ {
+								'class':   'parameter',
+								'id':      'f_%s_%d' | format(component.name, loop.index),
+								'value':   option,
+								'name':    component.name,
+								'type':    'radio',
+								'checked': 'checked' if component.default == option else None,
+								} | xmlattr }}>
 						<label for="f_{{ component.name }}_{{ loop.index}}">{{ option }}</label>
 					{% endfor -%}
 					</div>
 				{% endif -%}
 			{% elif component.datatype == 'file' -%}
-				<input class="parameter" id="f_{{ component.name }}" name="{{ component.name }}" type="file" data-default="{{ component.default }}" />
+				<input{{ {
+						'class':        'parameter',
+						'id':           'f_%s' | format(component.name),
+						'name':         component.name,
+						'type':         'file',
+						'data-default': component.default
+						} | xmlattr }} />
 			{% else -%}
 				{# Default to a normal text input -#}
 				{# Select a HTML5 input pattern restriction based on the data type -#}
@@ -138,8 +172,15 @@
 					{# FIXME: This pattern is not strict enough at all -#}
 					{% set pattern = '[0-9.]*' -%}
 				{% endif -%}
-				<input class="parameter" id="f_{{ component.name }}" name="{{ component.name }}" type="text" value="{{ component.default }}"
-					{%- if pattern %} pattern="{{ pattern }}"{% endif %} data-default="{{ component.default }}" />
+				<input{{ {
+						'class':        'parameter',
+						'id':           'f_%s' | format(component.name),
+						'name':         component.name,
+						'type':         'text',
+						'value':        component.default,
+						'pattern':      pattern,
+						'data-default': component.default,
+						} | xmlattr }} />
 			{% endif -%}
 				<div class="buttonset parameter-buttons" data-for="f_{{ component.name }}">
 				{{ render_buttonset(component) -}}
