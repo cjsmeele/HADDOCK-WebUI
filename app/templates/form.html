@@ -20,7 +20,7 @@
 {% endblock -%}
 {% macro render_buttonset(component) -%}
 {# Renders the reset, add and remove buttons for a section or parameter -#}
-{%- if component.type != 'block' -%}
+{%- if component.type != 'section' -%}
 <i title="Reset to default value ({{ component.default }})" class="reset fa fa-fw fa-undo
 	{#-
 		We do not allow entire sections to be reset with a single click.
@@ -95,13 +95,13 @@
 			{%- for level in component.accesslevels -%}
 				{##} level-{{ level }}
 			{%- endfor -%}">
-		{% if component.type == 'block' -%}
-			{# Open a new block -#}
+		{% if component.type == 'section' -%}
+			{# Open a new section -#}
 			<section>
 				<header>
 					<i class="togglebutton fa fa-fw fa-lg fa-angle-double-down"></i>
 					<span class="header-text">{{ component.label }}</span>
-					<div class="buttonset block-buttons float-right">
+					<div class="buttonset section-buttons float-right">
 					{{ render_buttonset(component) -}}
 					</div>
 				</header>
