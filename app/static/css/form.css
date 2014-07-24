@@ -125,9 +125,9 @@ form.nice .row {
 }
 
 
-form.nice .row > .value > input,
-form.nice .row > .value > select,
-form.nice .row > .value > .select2
+form.nice .row > .value input,
+form.nice .row > .value select,
+form.nice .row > .value .select2
 {
 	margin-top: 1px;
 	margin-bottom: 1px;

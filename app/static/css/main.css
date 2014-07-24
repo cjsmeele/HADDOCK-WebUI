@@ -376,25 +376,21 @@ form.nice .row > label {
 /* Fields with a div around input elements {{{ */
 
 form.nice .row > .value {
-	display: table;
 	float: left;
 }
 
 form.nice .row > .value > * {
-	display: table-cell;
-	width: 1%; /* Shrink to fit */
 	white-space: nowrap;
 }
 
-form.nice .row > .value > input,
-form.nice .row > .value > input[type="text"],
-form.nice .row > .value > input[type="password"],
-form.nice .row > .value > input[type="number"],
-form.nice .row > .value > select,
-form.nice .row > .value > .select2,
-form.nice .row > .value > .checkgroup
+form.nice .row > .value > .table-row > input,
+form.nice .row > .value > .table-row > input[type="text"],
+form.nice .row > .value > .table-row > input[type="password"],
+form.nice .row > .value > .table-row > input[type="number"],
+form.nice .row > .value > .table-row > select,
+form.nice .row > .value > .table-row > .select2,
+form.nice .row > .value > .table-row > .checkgroup
 {
-	display: table-cell;
 	width: 100%;
 }
 

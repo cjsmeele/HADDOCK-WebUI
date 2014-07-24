@@ -59,7 +59,7 @@
 	<noscript>
 		<div class="warning">
 			<p><i class="fa fa-warning"></i>
-				JavaScript appears to be disabled in your browser. <br />
+				JavaScript appears to be disabled in your browser.<br />
 				This web application requires JavaScript to enable multiplication of input fields,
 				section folding and form level selection, and will not work correctly without it.
 				Please enable JavaScript support or use a different browser.
@@ -69,7 +69,7 @@
 
 	<ul class="levelchooser">
 		{% for level in accesslevels -%}
-			{% set class = level.name -%}
+			{% set class = 'level-%s' | format(level.name) -%}
 			{% if level.name == accesslevel_index -%}
 				{% set class = class + ' selected' -%}
 			{% endif -%}
@@ -119,71 +119,73 @@
 					} | xmlattr }}>
 				{{ component.label or component.name }}
 			</label>
-			<div class="value">
-			{% if component.datatype == 'choice' -%}
-				{# For choice parameters, render radio buttons or a dropdown depending on the amount of options -#}
-				{% if component.options | length > config.FRONTEND_RADIO_MAX -%}
-					<select{{ {
-							'class':        'parameter',
+			<div class="value table">
+				<div class="table-row">
+				{% if component.datatype == 'choice' -%}
+					{# For choice parameters, render radio buttons or a dropdown depending on the amount of options -#}
+					{% if component.options | length > config.FRONTEND_RADIO_MAX -%}
+						<select{{ {
+								'class':        'parameter table-cell',
+								'id':           'f_%s' | format(component.name),
+								'name':         component.name,
+								'data-default': component.default,
+								} | xmlattr }}>
+							{% for option in component.options -%}
+							<option{{ {
+									'value': option,
+									'selected': 'selected' if component.default == option else None,
+									} | xmlattr }}>
+								{{ option }}
+							</option>
+							{% endfor -%}
+						</select>
+					{% else -%}
+						{# Render radio buttons instead -#}
+						{# The default value is stored in a data attribute in a container div -#}
+						<div id="f_{{ component.name }}" class="checkgroup" data-default="{{ component.default }}">
+						{% for option in component.options -%}
+							<input{{ {
+									'class':   'parameter table-cell',
+									'id':      'f_%s_%d' | format(component.name, loop.index),
+									'value':   option,
+									'name':    component.name,
+									'type':    'radio',
+									'checked': 'checked' if component.default == option else None,
+									} | xmlattr }}>
+							<label for="f_{{ component.name }}_{{ loop.index}}">{{ option }}</label>
+						{% endfor -%}
+						</div>
+					{% endif -%}
+				{% elif component.datatype == 'file' -%}
+					<input{{ {
+							'class':        'parameter table-cell',
 							'id':           'f_%s' | format(component.name),
 							'name':         component.name,
-							'data-default': component.default,
-							} | xmlattr }}>
-						{% for option in component.options -%}
-						<option{{ {
-								'value': option,
-								'selected': 'selected' if component.default == option else None,
-								} | xmlattr }}>
-							{{ option }}
-						</option>
-						{% endfor -%}
-					</select>
+							'type':         'file',
+							'data-default': component.default
+							} | xmlattr }} />
 				{% else -%}
-					{# Render radio buttons instead -#}
-					{# The default value is stored in a data attribute in a container div -#}
-					<div id="f_{{ component.name }}" class="checkgroup" data-default="{{ component.default }}">
-					{% for option in component.options -%}
-						<input{{ {
-								'class':   'parameter',
-								'id':      'f_%s_%d' | format(component.name, loop.index),
-								'value':   option,
-								'name':    component.name,
-								'type':    'radio',
-								'checked': 'checked' if component.default == option else None,
-								} | xmlattr }}>
-						<label for="f_{{ component.name }}_{{ loop.index}}">{{ option }}</label>
-					{% endfor -%}
+					{# Default to a normal text input -#}
+					{# Select a HTML5 input pattern restriction based on the data type -#}
+					{% if component.datatype == 'integer' -%}
+						{% set pattern = '\d*' -%}
+					{% elif component.datatype == 'float' -%}
+						{# FIXME: This pattern is not strict enough at all -#}
+						{% set pattern = '[0-9.]*' -%}
+					{% endif -%}
+					<input{{ {
+							'class':        'parameter table-cell',
+							'id':           'f_%s' | format(component.name),
+							'name':         component.name,
+							'type':         'text',
+							'value':        component.default,
+							'pattern':      pattern,
+							'data-default': component.default,
+							} | xmlattr }} />
+				{% endif -%}
+						<div class="buttonset parameter-buttons table-cell shrink" data-for="f_{{ component.name }}">
+						{{ render_buttonset(component) -}}
 					</div>
-				{% endif -%}
-			{% elif component.datatype == 'file' -%}
-				<input{{ {
-						'class':        'parameter',
-						'id':           'f_%s' | format(component.name),
-						'name':         component.name,
-						'type':         'file',
-						'data-default': component.default
-						} | xmlattr }} />
-			{% else -%}
-				{# Default to a normal text input -#}
-				{# Select a HTML5 input pattern restriction based on the data type -#}
-				{% if component.datatype == 'integer' -%}
-					{% set pattern = '\d*' -%}
-				{% elif component.datatype == 'float' -%}
-					{# FIXME: This pattern is not strict enough at all -#}
-					{% set pattern = '[0-9.]*' -%}
-				{% endif -%}
-				<input{{ {
-						'class':        'parameter',
-						'id':           'f_%s' | format(component.name),
-						'name':         component.name,
-						'type':         'text',
-						'value':        component.default,
-						'pattern':      pattern,
-						'data-default': component.default,
-						} | xmlattr }} />
-			{% endif -%}
-				<div class="buttonset parameter-buttons" data-for="f_{{ component.name }}">
-				{{ render_buttonset(component) -}}
 				</div>
 			</div>
 		{% elif component.type == 'paragraph' -%}

@@ -84,6 +84,13 @@
 	        user-select: none;
 }
 
+/* Table layout */
+.table      { display: table;        }
+.table-row  { display: table-row;    }
+.table-col  { display: table-column; }
+.table-cell { display: table-cell;   }
+.table-cell.shrink { width: 1%; }
+
 /* Colors */
 .grey              { color: #aaa; }
 .grey:visited      { color: #aaa; }
