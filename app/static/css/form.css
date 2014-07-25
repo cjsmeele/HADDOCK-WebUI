@@ -20,11 +20,44 @@ div.error {
 	border: 1px solid #c66;
 }
 
+/*   Loading progressbar {{{ */
+
 div.loading > div {
 	width: 50%;
+	max-width: 300px;
 	margin: 50px auto;
 }
 
+div.loading > div p {
+	margin: 5px auto;
+}
+
+div.loading .progress-container {
+	position: relative;
+	height: 8px;
+	border: 1px solid #aaa;
+	border-radius: 2px;
+}
+div.loading .progress-container .progressbar {
+	position: absolute;
+	left: 0;
+	width: 0%;
+	height: 100%;
+	/*background: #6b1e0c;*/
+	background: #aaa;
+	box-shadow: 0 0 1px 1px rgba(255,255,255,0.2) inset;
+}
+div.loading .progress-container .progressbar.indeterminate {
+	width: 20%;
+	        animation: progress 1000ms 0 infinite alternate linear both;
+	   -moz-animation: progress 1000ms 0 infinite alternate linear both;
+	-webkit-animation: progress 1000ms 0 infinite alternate linear both;
+}
+
+@keyframes         progress { from { left: 0; } to { left: 80%; } }
+@-webkit-keyframes progress { from { left: 0; } to { left: 80%; } }
+
+/*   }}} */
 /* }}} */
 /* Level chooser {{{ */
 

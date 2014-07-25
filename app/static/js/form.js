@@ -3,12 +3,142 @@
 $(function(){
 	var formHasChanged   = false;
 	var formLevelTooHigh = false;
-	var components = formComponents;
+	var components       = formComponents;
+	var componentCount   = 0;
 
-	function getComponentCount(){
+	// TODO: JS callback pasta needs documentation
+
+	function getComponentCount(componentList, callback){
+		var count = 0;
+
+		async.each(componentList, function(item, f_callback){
+			if(item.type == 'section'){
+				count++;
+				getComponentCount(item.children, function(err, childrenCount){
+					count += childrenCount;
+					f_callback();
+				});
+			}else{
+				count++;
+				f_callback();
+			}
+		}, function(err){
+			callback(err, count);
+		});
+	};
+
+	function setProgress(fraction){
+		if(fraction > 1)
+			fraction = 100;
+		else if(fraction < 0)
+			fraction = 0;
+
+		$('#progressbar').removeClass('indeterminate');
+		$('#progressbar').css('width', (fraction * 100) + '%');
+	}
+
+	// HTML generators, templates {{{
+
+	function makeSection(label){
+		var section = $('<section>');
+		var header  = $('<header>');
+
+		header.append($('<i class="togglebutton fa fa-fw fa-lg fa-angle-double-down">'))
+		      .append($('<span class="header-text">').html(label))
+		      .append($('<div class="buttonset section-buttons float-right">'));
+
+		var content   = $('<div class="content">');
+
+		section.append(header)
+		       .append(content);
+
+		return section;
+	}
+
+	function makeParameter(name, labelText, datatype, defaultValue){
+		var label = $('<label>');
+
+		label.attr('for',   'f_' + name)
+		     .attr('title', '(' + datatype + ') ' + name + ' = ' + defaultValue)
+		     .html(labelText);
+
+		var value    = $('<div class="value table">');
+		var valueRow = $('<div class="table-row">');
+
+		value.append(valueRow);
+
+		return { 'label': label, 'value': value };
+	}
+
+	// }}}
+
+	function renderComponents(container, componentList, callback){
+		var componentsRendered = 0;
+
+		async.each(componentList, function(item, f_callback){
+			var row = $('<div class="row">');
+
+			if(item.type == 'section'){
+				var section = makeSection(item.label);
+
+				renderComponents(section.find('> .content'), item.children, function(err, childrenRendered){
+					componentsRendered += childrenRendered;
+				});
+
+				row.append(section);
+			}else{
+				var parameter = makeParameter(
+					item.name,
+					(item.label === undefined) ? item.name : item.label,
+					item.datatype,
+					item.default
+				);
+				row.append(parameter.label)
+				   .append(parameter.value);
+			}
+
+			container.append(row);
+
+			componentsRendered++;
+			setProgress(componentsRendered / componentCount);
+			$('#components-loaded').html(componentCount);
+
+			f_callback();
+		}, function(err){
+			callback(err, componentsRendered);
+		});
 	}
 
 	function buildForm(components){
+		console.log('buildForm start');
+
+		async.series([
+			function(callback){
+				getComponentCount(components, function(err, count){
+					componentCount = count;
+					$('#components-total').html(componentCount);
+					$('#progress-activity').html('Loading form components');
+					$('#component-progress').removeClass('hidden');
+					setProgress(0);
+					callback();
+				});
+			},
+			function(callback){
+				renderComponents($('#haddockform > .content'), components, function(){
+					callback();
+				});
+			},
+			function(callback){
+				// Fold all sections
+				//$('#haddockform section').each(function(){ toggleSection(this, true); });
+				//setLevel(formLevel, true);
+				$('.loading').hide();
+				$('#haddockform').removeClass('hidden');
+
+				console.log('buildForm end');
+				callback();
+			}
+		]);
 	}
 
 	function setLevel(name, force){
@@ -100,7 +230,6 @@ $(function(){
 		setLevel($(this).data('name'));
 	});
 
-	//$('#haddockform section > header .header-text').click(function(e){
 	$('#haddockform section > header').click(function(e){
 		toggleSection($(this).parents('section')[0]);
 	});
@@ -162,14 +291,6 @@ $(function(){
 		e.preventDefault();
 		e.stopPropagation();
 	});
-
-	window.setTimeout(function(){
-		// Fold all sections
-		$('#haddockform section').each(function(){ toggleSection(this, true); });
-		setLevel(formLevel, true);
-		$('.loading').hide();
-		$('#haddockform').removeClass('hidden');
-	}, 100);
 
 	buildForm(formComponents);
 });

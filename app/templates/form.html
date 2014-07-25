@@ -93,14 +93,23 @@
 
 	<div class="align-center loading">
 		<div>
-			<p class="grey cursor-default">Loading form...</p>
+			<p class="grey cursor-default">
+				<span id="progress-activity">Initializing</span>&hellip;
+				<span id="component-progress" class="hidden">
+					<span id="components-loaded">0</span> / <span id="components-total">&infin;</span>
+				</span>
+			</p>
+			<div class="progress-container">
+				<div id="progressbar" class="progressbar indeterminate"></div>
+			</div>
 		</div>
 	</div>
 
 	<form id="haddockform" class="nice div60 haddock hidden" method="post">
-	<div class="align-center">
-		<input type="submit" />
-	</div>
+		<div class="content"></div>
+		<div class="align-center">
+			<input type="submit" />
+		</div>
 	</form>
 </section>
 {% endblock %}
