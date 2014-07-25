@@ -16,6 +16,8 @@
 		var Config = {
 			hideDisabledComponents: true
 		};
+
+		var formComponents = {{ model | tojson | safe }};
 	</script>
 {% endblock -%}
 {% macro render_buttonset(component) -%}
@@ -96,111 +98,6 @@
 	</div>
 
 	<form id="haddockform" class="nice div60 haddock hidden" method="post">
-	{% for component in model if not component.hidden recursive -%}
-		<div class="row
-			{%- for level in component.accesslevels -%}
-				{##} level-{{ level }}
-			{%- endfor -%}">
-		{% if component.type == 'section' -%}
-			{# Open a new section -#}
-			<section>
-				<header>
-					<i class="togglebutton fa fa-fw fa-lg fa-angle-double-down"></i>
-					<span class="header-text">{{ component.label }}</span>
-					<div class="buttonset section-buttons float-right">
-					{{ render_buttonset(component) -}}
-					</div>
-				</header>
-				<div class="content">
-					{# Loop recursively in the content div -#}
-					{{ loop(component.children) -}}
-				</div>
-			</section>
-		{% elif component.type == 'parameter' -%}
-			{# Output a parameter -#}
-			{# First render a label with the correct for attribute -#}
-			<label{{ {
-					'for':   'f_%s' | format(component.name),
-					'title': '(%s) %s = %s' | format(component.datatype, component.name, component.default),
-					} | xmlattr }}>
-				{{ component.label or component.name }}
-			</label>
-			<div class="value table">
-				<div class="table-row">
-				{% if component.datatype == 'choice' -%}
-					{# For choice parameters, render radio buttons or a dropdown depending on the amount of options -#}
-					{% if component.options | length > config.FRONTEND_RADIO_MAX -%}
-						<select{{ {
-								'class':        'parameter table-cell',
-								'id':           'f_%s' | format(component.name),
-								'name':         component.name,
-								'data-default': component.default,
-								} | xmlattr }}>
-							{% for option in component.options -%}
-							<option{{ {
-									'value': option,
-									'selected': 'selected' if component.default == option else None,
-									} | xmlattr }}>
-								{{ option }}
-							</option>
-							{% endfor -%}
-						</select>
-					{% else -%}
-						{# Render radio buttons instead -#}
-						{# The default value is stored in a data attribute in a container div -#}
-						<div id="f_{{ component.name }}" class="checkgroup" data-default="{{ component.default }}">
-						{% for option in component.options -%}
-							<input{{ {
-									'class':   'parameter table-cell',
-									'id':      'f_%s_%d' | format(component.name, loop.index),
-									'value':   option,
-									'name':    component.name,
-									'type':    'radio',
-									'checked': 'checked' if component.default == option else None,
-									} | xmlattr }}>
-							<label for="f_{{ component.name }}_{{ loop.index}}">{{ option }}</label>
-						{% endfor -%}
-						</div>
-					{% endif -%}
-				{% elif component.datatype == 'file' -%}
-					<input{{ {
-							'class':        'parameter table-cell',
-							'id':           'f_%s' | format(component.name),
-							'name':         component.name,
-							'type':         'file',
-							'data-default': component.default
-							} | xmlattr }} />
-				{% else -%}
-					{# Default to a normal text input -#}
-					{# Select a HTML5 input pattern restriction based on the data type -#}
-					{% if component.datatype == 'integer' -%}
-						{% set pattern = '\d*' -%}
-					{% elif component.datatype == 'float' -%}
-						{# FIXME: This pattern is not strict enough at all -#}
-						{% set pattern = '[0-9.]*' -%}
-					{% endif -%}
-					<input{{ {
-							'class':        'parameter table-cell',
-							'id':           'f_%s' | format(component.name),
-							'name':         component.name,
-							'type':         'text',
-							'value':        component.default,
-							'pattern':      pattern,
-							'data-default': component.default,
-							} | xmlattr }} />
-				{% endif -%}
-						<div class="buttonset parameter-buttons table-cell shrink" data-for="f_{{ component.name }}">
-						{{ render_buttonset(component) -}}
-					</div>
-				</div>
-			</div>
-		{% elif component.type == 'paragraph' -%}
-			<p class="documentation">
-				{{ component.text }}
-			</p>
-		{% endif -%}
-		</div>
-	{% endfor -%}
 	<div class="align-center">
 		<input type="submit" />
 	</div>

@@ -3,6 +3,13 @@
 $(function(){
 	var formHasChanged   = false;
 	var formLevelTooHigh = false;
+	var components = formComponents;
+
+	function getComponentCount(){
+	}
+
+	function buildForm(components){
+	}
 
 	function setLevel(name, force){
 		if(
@@ -164,4 +171,5 @@ $(function(){
 		$('#haddockform').removeClass('hidden');
 	}, 100);
 
+	buildForm(formComponents);
 });
