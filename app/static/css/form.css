@@ -20,6 +20,11 @@ div.error {
 	border: 1px solid #c66;
 }
 
+div.loading > div {
+	width: 50%;
+	margin: 50px auto;
+}
+
 /* }}} */
 /* Level chooser {{{ */
 

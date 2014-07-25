@@ -32,8 +32,8 @@ $(function(){
 
 		formLevelIndex = formLevels.indexOf(name);
 
-		var rowsToHide = $('.row:not([class~="level-' + name + '"]');
-		var rowsToShow = $('.row.level-' + name);
+		var rowsToHide = $('#haddockform .row:not([class~="level-' + name + '"]');
+		var rowsToShow = $('#haddockform .row.level-' + name);
 
 		if(Config.hideDisabledComponents){
 			rowsToHide.hide();
@@ -67,19 +67,25 @@ $(function(){
 		}
 	}
 
-	function toggleSection(section){
+	function toggleSection(section, batch){
 		var toggleButton = $(section).find('header > .togglebutton')[0];
 
 		if($(section).hasClass('folded')){
 			$(toggleButton).removeClass('fa-angle-double-up');
 			$(toggleButton).addClass('fa-angle-double-down');
 			$(section).removeClass('folded');
-			$($(section).find('.content')[0]).slideDown(80);
+			if(batch === true)
+				$($(section).find('.content')[0]).show();
+			else
+				$($(section).find('.content')[0]).slideDown(80);
 		}else{
 			$(toggleButton).removeClass('fa-angle-double-down');
 			$(toggleButton).addClass('fa-angle-double-up');
 			$(section).addClass('folded');
-			$($(section).find('.content')[0]).slideUp(80);
+			if(batch === true)
+				$($(section).find('.content')[0]).hide();
+			else
+				$($(section).find('.content')[0]).slideUp(80);
 		}
 	}
 
@@ -150,5 +156,12 @@ $(function(){
 		e.stopPropagation();
 	});
 
-	setLevel(formLevel, true);
+	window.setTimeout(function(){
+		// Fold all sections
+		$('#haddockform section').each(function(){ toggleSection(this, true); });
+		setLevel(formLevel, true);
+		$('.loading').hide();
+		$('#haddockform').removeClass('hidden');
+	}, 100);
+
 });

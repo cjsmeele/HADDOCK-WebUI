@@ -9,9 +9,9 @@
 			'{{ level.name }}',
 			{% endfor -%}
 		];
-		var formLevelIndex = '{{ accesslevel_index }}';
+		var formLevelIndex = {{ accesslevel_index }};
 		var formLevel      = formLevels[formLevelIndex];
-		var userLevel      = '{{ user_accesslevel_index }}';
+		var userLevel      = {{ user_accesslevel_index }};
 
 		var Config = {
 			hideDisabledComponents: true
@@ -89,7 +89,13 @@
 
 	<div class="levelwarning warning hidden"></div>
 
-	<form id="haddockform" class="nice div60 haddock" method="post">
+	<div class="align-center loading">
+		<div>
+			<p class="grey cursor-default">Loading form...</p>
+		</div>
+	</div>
+
+	<form id="haddockform" class="nice div60 haddock hidden" method="post">
 	{% for component in model if not component.hidden recursive -%}
 		<div class="row
 			{%- for level in component.accesslevels -%}
