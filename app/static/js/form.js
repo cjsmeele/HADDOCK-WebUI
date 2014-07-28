@@ -8,11 +8,17 @@ $(function(){
 
 	// TODO: JS callback pasta needs documentation
 
+	/**
+	 * Get the amount of components in a component tree by looping through sections recursively.
+	 *
+	 * @param componentList an array of components
+	 * @param callback called with (err, count)
+	 */
 	function getComponentCount(componentList, callback){
 		var count = 0;
 
 		async.each(componentList, function(item, f_callback){
-			if(item.type == 'section'){
+			if(item.type === 'section'){
 				count++;
 				getComponentCount(item.children, function(err, childrenCount){
 					count += childrenCount;
@@ -27,47 +33,94 @@ $(function(){
 		});
 	};
 
+	/**
+	 * Update the loading progressbar with a fraction.
+	 *
+	 * @param fraction a floating point number (0.0 - 1.0) indicating progress
+	 */
 	function setProgress(fraction){
 		if(fraction > 1)
 			fraction = 100;
 		else if(fraction < 0)
 			fraction = 0;
 
-		$('#progressbar').removeClass('indeterminate');
-		$('#progressbar').css('width', (fraction * 100) + '%');
+		var progressbar = $('#progressbar');
+		progressbar.removeClass('indeterminate');
+		progressbar.css('width', (fraction * 100) + '%');
 	}
 
 	// HTML generators, templates {{{
 
-	function makeSection(label){
+	/**
+	 * Render reset, add, remove buttons for a form component.
+	 *
+	 * @param component a section or parameter form component
+	 * @param repeatIndex an index number if this is not the first element of a repeated component
+	 *
+	 * @return a jQuery selector thingy containing a buttonSet div
+	 */
+	function makeButtonSet(component, repeatIndex){
+		if(component.type === 'section'){
+			var buttonSet = $('<div class="buttonset section-buttons float-right">');
+		}else if(component.type === 'parameter'){
+			var buttonSet = $('<div class="buttonset parameter-buttons float-right">');
+		}else{
+			//return $('<div class="buttonset float-right">');
+			alert('Error: Cannot render buttonSet for component type "' + component.type + '"');
+			return;
+		}
+
+		if(typeof(repeatIndex) === 'undefined')
+			repeatIndex = 0
+
+		var resetButton = $('<i title="Reset to default value (' + component.default + ')" class="reset fa fa-fw fa-undo">')
+
+		buttonSet.append(resetButton);
+
+		return buttonSet;
+	}
+
+	function makeSection(component){
 		var section = $('<section>');
 		var header  = $('<header>');
 
 		header.append($('<i class="togglebutton fa fa-fw fa-lg fa-angle-double-down">'))
-		      .append($('<span class="header-text">').html(label))
-		      .append($('<div class="buttonset section-buttons float-right">'));
+		      .append($('<span class="header-text">').html(component.label))
+		      .append(makeButtonSet(component));
 
 		var content   = $('<div class="content">');
 
 		section.append(header)
 		       .append(content);
 
+		header.click(function(e){
+			toggleSection(section);
+		});
+
 		return section;
 	}
 
-	function makeParameter(name, labelText, datatype, defaultValue){
+	function makeParameter(component){
 		var label = $('<label>');
 
-		label.attr('for',   'f_' + name)
-		     .attr('title', '(' + datatype + ') ' + name + ' = ' + defaultValue)
-		     .html(labelText);
+		label.attr('for',   'f_' + component.name)
+		     .attr('title', '(' + component.datatype + ') ' + component.name + ' = ' + component.default)
+		     .html(typeof(component.label) === 'undefined' ? component.name : component.label);
 
 		var value    = $('<div class="value table">');
 		var valueRow = $('<div class="table-row">');
+		valueRow.append(makeButtonSet(component));
 
 		value.append(valueRow);
 
 		return { 'label': label, 'value': value };
+	}
+
+	function makeParagraph(component){
+		var paragraph = $('<p class="documentation">');
+		paragraph.html(component.text);
+
+		return paragraph;
 	}
 
 	// }}}
@@ -78,23 +131,21 @@ $(function(){
 		async.each(componentList, function(item, f_callback){
 			var row = $('<div class="row">');
 
-			if(item.type == 'section'){
-				var section = makeSection(item.label);
+			if(item.type === 'section'){
+				var section = makeSection(item);
 
 				renderComponents(section.find('> .content'), item.children, function(err, childrenRendered){
 					componentsRendered += childrenRendered;
 				});
 
 				row.append(section);
-			}else{
-				var parameter = makeParameter(
-					item.name,
-					(item.label === undefined) ? item.name : item.label,
-					item.datatype,
-					item.default
-				);
+			}else if(item.type === 'parameter'){
+				var parameter = makeParameter(item);
 				row.append(parameter.label)
 				   .append(parameter.value);
+			}else if(item.type === 'paragraph'){
+				var paragraph = makeParagraph(item);
+				row.append(paragraph);
 			}
 
 			container.append(row);
@@ -228,10 +279,6 @@ $(function(){
 
 	$('.levelchooser li').click(function(e){
 		setLevel($(this).data('name'));
-	});
-
-	$('#haddockform section > header').click(function(e){
-		toggleSection($(this).parents('section')[0]);
 	});
 
 	$('#haddockform .parameter:not([type="file"])').change(function(e){

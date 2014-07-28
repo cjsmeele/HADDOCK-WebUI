@@ -20,38 +20,6 @@
 		var formComponents = {{ model | tojson | safe }};
 	</script>
 {% endblock -%}
-{% macro render_buttonset(component) -%}
-{# Renders the reset, add and remove buttons for a section or parameter -#}
-{%- if component.type != 'section' -%}
-<i title="Reset to default value ({{ component.default }})" class="reset fa fa-fw fa-undo
-	{#-
-		We do not allow entire sections to be reset with a single click.
-		This could be supported actually, but I'd rather not implement it
-		because one misclick could mean a lot of lost parameters and a lot of
-		unhappy researchers.
-	-#}
-	{##} invisible
-{#- #}"></i>
-{%- endif -%}
-<i class="minus fa fa-fw fa-minus
-	{#- -#}
-	{#-
-		On page load we always generate the minimum amount of objects;
-		The user shouldn't be able to remove anything they did not add themselves.
-	-#}
-	{##} invisible
-	{#- -#}
-"></i>{# -#}
-<i class="plus fa fa-fw fa-plus
-	{#- -#}
-	{#- But we do need to check whether the user is allowed to add more stuff -#}
-	{%- if not component.repeat or component.repeat_min == component.repeat_max -%}
-		{##} invisible
-	{%- endif -%}
-	{#- -#}
-"></i>{# -#}
-
-{% endmacro -%}
 {% block content -%}
 <section class="content-form">
 	<header>
