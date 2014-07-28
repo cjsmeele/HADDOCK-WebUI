@@ -50,6 +50,11 @@ $(function(){
 	}
 
 
+	/**
+	 * Resets an input, select or checkbox group to its default value.
+	 *
+	 * @param input the element to reset
+	 */
 	function resetInput(input){
 		var buttonSet = $('.buttonset[data-for="'+ $(input).attr('id') +'"]');
 		//var row = $(input).parents('.row');
@@ -68,6 +73,11 @@ $(function(){
 		$(buttonSet).find('i.reset').addClass('invisible');
 	}
 
+	/**
+	 * Event handler for reset buttons.
+	 *
+	 * @param e a click event
+	 */
 	function onResetButton(e){
 		var buttonSet = $(this).parent('.buttonset');
 		var input = $('#'+buttonSet.data('for'));
@@ -145,6 +155,13 @@ $(function(){
 		return buttonSet;
 	}
 
+	/**
+	 * Create a section component.
+	 *
+	 * @param the section component to build
+	 *
+	 * @return a section element
+	 */
 	function makeSection(component){
 		var section = $('<section>');
 		var header  = $('<header>');
@@ -165,6 +182,14 @@ $(function(){
 		return section;
 	}
 
+	/**
+	 * Create a value (input, select, checkbox group) for a parameter component.
+	 *
+	 * @param component the parameter component
+	 * @param repeatIndex an optional index number for repeated parameters
+	 *
+	 * @return a value element
+	 */
 	function makeValue(component, repeatIndex){
 		var name = component.name;
 		if(typeof(repeatIndex) !== 'undefined'){
@@ -274,6 +299,13 @@ $(function(){
 		return { 'label': label, 'value': value };
 	}
 
+	/**
+	 * Create a documentation / standalone paragraph.
+	 *
+	 * @param component the paragraph component to build
+	 *
+	 * @return a paragraph element
+	 */
 	function makeParagraph(component){
 		var paragraph = $('<p class="documentation">');
 		paragraph.html(component.text);
@@ -281,6 +313,13 @@ $(function(){
 		return paragraph;
 	}
 
+	/**
+	 * Asynchronously render a list of components and add them to the specified container.
+	 *
+	 * @param container
+	 * @param componentList
+	 * @param callback called when done
+	 */
 	function renderComponents(container, componentList, callback){
 		var componentsRendered = 0;
 
@@ -318,6 +357,11 @@ $(function(){
 
 	// }}}
 
+	/**
+	 * Build a form with the specified list of components.
+	 *
+	 * @param components
+	 */
 	function buildForm(components){
 		console.log('buildForm start');
 
@@ -350,6 +394,12 @@ $(function(){
 		]);
 	}
 
+	/**
+	 * Change the form level.
+	 *
+	 * @param name the level name to switch
+	 * @param force show/hide components even if we are already on the specified level
+	 */
 	function setLevel(name, force){
 		if(
 				$('.levelchooser li.selected')[0] === $('.levelchooser li.level-'+name)[0]
@@ -413,6 +463,12 @@ $(function(){
 		}
 	}
 
+	/**
+	 * Fold or unfold a section.
+	 *
+	 * @param section
+	 * @param batch if true, do not attempt to animate folding
+	 */
 	function toggleSection(section, batch){
 		var toggleButton = $(section).find('header > .togglebutton')[0];
 
