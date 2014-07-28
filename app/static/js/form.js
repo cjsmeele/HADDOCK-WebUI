@@ -9,6 +9,103 @@ $(function(){
 
 
 	/**
+	 * Change the form level.
+	 *
+	 * @param name the level name to switch
+	 * @param force show/hide components even if we are already on the specified level
+	 */
+	function setLevel(name, force){
+		if(
+				$('.levelchooser li.selected')[0] === $('.levelchooser li.level-'+name)[0]
+				&& force !== true
+			){
+			// We are already at the right level
+			return;
+		}
+
+		if(!formLevelTooHigh && formLevels.indexOf(name) < formLevelIndex && formHasChanged){
+			// Because lower form levels hide certain fields, the user may lose
+			// filled in data by switching to a lower form level.
+			// Although we do not reset input fields, we should warn the user
+			// that some parameters may not be saved.
+			// Of course, we filter submitted fields based on access level on the server side as well.
+			if(!confirm(
+					'You may lose filled in parameters by switching to a lower form level.'
+					+ "\nAre you sure you want to switch to the " + name + ' form?'
+				)){
+				return;
+			}
+		}
+
+		$('.levelchooser li.selected').removeClass('selected');
+		$('.levelchooser li.level-'+name).addClass('selected');
+
+		formLevelIndex = formLevels.indexOf(name);
+
+		var rowsToHide = $('#haddockform .row:not([class~="level-' + name + '"]');
+		var rowsToShow = $('#haddockform .row.level-' + name);
+
+		if(Config.hideDisabledComponents){
+			rowsToHide.hide();
+			rowsToShow.show();
+		}
+
+		// FIXME: Select elements are not disabled
+		//        (Though this is not really a problem, as they _are_ hidden
+		//        and we do server-side checks as well)
+		rowsToHide.find('> .value input').prop('disabled', true);
+		rowsToShow.find('> .value input').prop('disabled', false);
+
+		if(formLevelIndex > userLevel){
+			formLevelTooHigh = true;
+
+			$('.levelwarning').html(
+				'<p>'
+				+ ' <i class="fa fa-warning"></i>'
+				+ ' Warning: Because your current access level is not high enough for the ' + name + ' interface,'
+				+ ' you will be unable to submit this form.'
+				+ ' Please <a href="mailto:/dev/null">request a higher access level</a> or choose a different form level above.'
+				+ '</p>'
+			);
+			$('.levelwarning').slideDown(80);
+			$('#haddockform input[type="submit"]').prop('disabled', true);
+		}else{
+			formLevelTooHigh = false;
+
+			$('.levelwarning').slideUp(80);
+			$('#haddockform input[type="submit"]').prop('disabled', false);
+		}
+	}
+
+	/**
+	 * Fold or unfold a section.
+	 *
+	 * @param section
+	 * @param batch if true, do not attempt to animate folding
+	 */
+	function toggleSection(section, batch){
+		var toggleButton = $(section).find('header > .togglebutton')[0];
+
+		if($(section).hasClass('folded')){
+			$(toggleButton).removeClass('fa-angle-double-up');
+			$(toggleButton).addClass('fa-angle-double-down');
+			$(section).removeClass('folded');
+			if(batch === true)
+				$($(section).find('.content')[0]).show();
+			else
+				$($(section).find('.content')[0]).slideDown(80);
+		}else{
+			$(toggleButton).removeClass('fa-angle-double-down');
+			$(toggleButton).addClass('fa-angle-double-up');
+			$(section).addClass('folded');
+			if(batch === true)
+				$($(section).find('.content')[0]).hide();
+			else
+				$($(section).find('.content')[0]).slideUp(80);
+		}
+	}
+
+	/**
 	 * Get the amount of components in a component tree by looping through sections recursively.
 	 *
 	 * @param componentList an array of components
@@ -49,7 +146,6 @@ $(function(){
 		progressbar.removeClass('indeterminate');
 		progressbar.css('width', (fraction * 100) + '%');
 	}
-
 
 	/**
 	 * Resets an input, select or checkbox group to its default value.
@@ -374,6 +470,8 @@ $(function(){
 	function buildForm(components){
 		console.log('buildForm start');
 
+		$('html').css('cursor', 'progress');
+
 		async.series([
 			function(callback){
 				window.setTimeout(callback, 0);
@@ -395,10 +493,12 @@ $(function(){
 			},
 			function(callback){
 				// Fold all sections
-				//$('#haddockform section').each(function(){ toggleSection(this, true); });
+				$('#haddockform section').each(function(){ toggleSection(this, true); });
 				//setLevel(formLevel, true);
 				$('.loading').hide();
 				$('#haddockform').removeClass('hidden');
+
+				$('html').css('cursor', '');
 
 				console.log('buildForm end');
 				window.setTimeout(callback, 0);
@@ -406,100 +506,16 @@ $(function(){
 		]);
 	}
 
-	/**
-	 * Change the form level.
-	 *
-	 * @param name the level name to switch
-	 * @param force show/hide components even if we are already on the specified level
-	 */
-	function setLevel(name, force){
-		if(
-				$('.levelchooser li.selected')[0] === $('.levelchooser li.level-'+name)[0]
-				&& force !== true
-			){
-			// We are already at the right level
-			return;
-		}
-
-		if(!formLevelTooHigh && formLevels.indexOf(name) < formLevelIndex && formHasChanged){
-			// Because lower form levels hide certain fields, the user may lose
-			// filled in data by switching to a lower form level.
-			// Although we do not reset input fields, we should warn the user
-			// that some parameters may not be saved.
-			// Of course, we filter submitted fields based on access level on the server side as well.
-			if(!confirm(
-					'You may lose filled in parameters by switching to a lower form level.'
-					+ "\nAre you sure you want to switch to the " + name + ' form?'
-				)){
-				return;
-			}
-		}
-
-		$('.levelchooser li.selected').removeClass('selected');
-		$('.levelchooser li.level-'+name).addClass('selected');
-
-		formLevelIndex = formLevels.indexOf(name);
-
-		var rowsToHide = $('#haddockform .row:not([class~="level-' + name + '"]');
-		var rowsToShow = $('#haddockform .row.level-' + name);
-
-		if(Config.hideDisabledComponents){
-			rowsToHide.hide();
-			rowsToShow.show();
-		}
-
-		// FIXME: Select elements are not disabled
-		//        (Though this is not really a problem, as they _are_ hidden
-		//        and we do server-side checks as well)
-		rowsToHide.find('> .value input').prop('disabled', true);
-		rowsToShow.find('> .value input').prop('disabled', false);
-
-		if(formLevelIndex > userLevel){
-			formLevelTooHigh = true;
-
-			$('.levelwarning').html(
-				'<p>'
-				+ ' <i class="fa fa-warning"></i>'
-				+ ' Warning: Because your current access level is not high enough for the ' + name + ' interface,'
-				+ ' you will be unable to submit this form.'
-				+ ' Please <a href="mailto:/dev/null">request a higher access level</a> or choose a different form level above.'
-				+ '</p>'
-			);
-			$('.levelwarning').slideDown(80);
-			$('#haddockform input[type="submit"]').prop('disabled', true);
-		}else{
-			formLevelTooHigh = false;
-
-			$('.levelwarning').slideUp(80);
-			$('#haddockform input[type="submit"]').prop('disabled', false);
-		}
+	function storeForm(){
+		simpleStorage.deleteKey('test');
 	}
 
-	/**
-	 * Fold or unfold a section.
-	 *
-	 * @param section
-	 * @param batch if true, do not attempt to animate folding
-	 */
-	function toggleSection(section, batch){
-		var toggleButton = $(section).find('header > .togglebutton')[0];
+	function loadForm(){
+		var form = simpleStorage.get('HADDOCKForm');
 
-		if($(section).hasClass('folded')){
-			$(toggleButton).removeClass('fa-angle-double-up');
-			$(toggleButton).addClass('fa-angle-double-down');
-			$(section).removeClass('folded');
-			if(batch === true)
-				$($(section).find('.content')[0]).show();
-			else
-				$($(section).find('.content')[0]).slideDown(80);
-		}else{
-			$(toggleButton).removeClass('fa-angle-double-down');
-			$(toggleButton).addClass('fa-angle-double-up');
-			$(section).addClass('folded');
-			if(batch === true)
-				$($(section).find('.content')[0]).hide();
-			else
-				$($(section).find('.content')[0]).slideUp(80);
+		if(typeof(form) === 'undefined'){
+			buildForm(formComponents);
+			storeForm();
 		}
 	}
 
@@ -531,5 +547,6 @@ $(function(){
 		e.stopPropagation();
 	});
 
-	window.setTimeout(function(){buildForm(formComponents)}, 0);
+	//window.setTimeout(function(){buildForm(formComponents)}, 0);
+	loadForm();
 });
