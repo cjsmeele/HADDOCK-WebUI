@@ -49,10 +49,39 @@ $(function(){
 		progressbar.css('width', (fraction * 100) + '%');
 	}
 
+
+	function resetInput(input){
+		var buttonSet = $('.buttonset[data-for="'+ $(input).attr('id') +'"]');
+		//var row = $(input).parents('.row');
+		//input.val(row.data('default'));
+		input.val(input.data('default'));
+
+		if(input.is('input[type="text"]')){
+			input.val(input.data('default'));
+		}else if(input.is('select')){
+			input.val(input.data('default'));
+		}else if(input.is('.checkgroup')){
+			// Now let's just hope the default value doesn't contain double quotes...
+			input.find('input[type="radio"][value="' + input.data('default') + '"]').prop('checked', true);
+		}
+
+		$(buttonSet).find('i.reset').addClass('invisible');
+	}
+
+	function onResetButton(e){
+		var buttonSet = $(this).parent('.buttonset');
+		var input = $('#'+buttonSet.data('for'));
+		resetInput(input);
+
+		e.preventDefault();
+		e.stopPropagation();
+	}
+
+
 	// HTML generators, templates {{{
 
 	/**
-	 * Render reset, add, remove buttons for a form component.
+	 * Render repeat label and reset, add, remove buttons for a form component.
 	 *
 	 * @param component a section or parameter form component
 	 * @param repeatIndex an index number if this is not the first element of a repeated component
@@ -63,19 +92,55 @@ $(function(){
 		if(component.type === 'section'){
 			var buttonSet = $('<div class="buttonset section-buttons float-right">');
 		}else if(component.type === 'parameter'){
-			var buttonSet = $('<div class="buttonset parameter-buttons float-right">');
+			var buttonSet = $('<div class="buttonset parameter-buttons table-cell shrink">');
 		}else{
-			//return $('<div class="buttonset float-right">');
 			alert('Error: Cannot render buttonSet for component type "' + component.type + '"');
 			return;
 		}
 
-		if(typeof(repeatIndex) === 'undefined')
-			repeatIndex = 0
+		if(component.type === 'section'){
+			var minusButton = $('<i title="Remove this block" class="minus fa fa-fw fa-minus">')
+			var plusButton  = $('<i title="Add a block of this type" class="plus fa fa-fw fa-plus">')
+		}else{
+			var minusButton = $('<i title="Remove this value" class="minus fa fa-fw fa-minus">')
+			var plusButton  = $('<i title="Add a value" class="plus  fa fa-fw fa-plus">')
+		}
 
-		var resetButton = $('<i title="Reset to default value (' + component.default + ')" class="reset fa fa-fw fa-undo">')
+		// Check whether we need to make repeat buttons invisible.
+		if(component.repeat){
+			if(typeof(repeatIndex) === 'undefined')
+				repeatIndex = 0
 
-		buttonSet.append(resetButton);
+			if(component.repeat_min === component.repeat_max){
+				plusButton.addClass('invisible');
+			}
+
+			// We show the minimum amount of parameters / section allowed,
+			// we can hide the remove button by default.
+			minusButton.addClass('invisible');
+		}else{
+			minusButton.addClass('invisible');
+			plusButton.addClass('invisible');
+		}
+
+		if(component.type === 'parameter'){
+			var resetButton = $('<i title="Reset to default value (' + component.default + ')" class="reset fa fa-fw fa-undo">')
+			// New parameters or parameter values will always have the default value, hide the reset button
+			resetButton.addClass('invisible');
+			resetButton.click(onResetButton);
+			buttonSet.append(resetButton);
+		}
+
+		if(component.repeat)
+			buttonSet.data('for', 'f_' + component.name + '_' + repeatIndex);
+		else
+			buttonSet.data('for', 'f_' + component.name);
+
+		// We need this to allow [data-X="Y"] selectors to work
+		buttonSet.attr('data-for', buttonSet.data('for'));
+
+		buttonSet.append(minusButton);
+		buttonSet.append(plusButton);
 
 		return buttonSet;
 	}
@@ -100,6 +165,90 @@ $(function(){
 		return section;
 	}
 
+	function makeValue(component, repeatIndex){
+		var name = component.name;
+		if(typeof(repeatIndex) !== 'undefined'){
+			name += '_' + repeatIndex;
+		}
+		var id = 'f_' + name;
+
+		if(component.datatype === 'choice' && component.options.length > 999){
+			// Special case for radio buttons
+			// TODO
+			var input = $('<div class="checkgroup table-cell" />');
+			input.attr('id', id);
+
+			// List all the options
+			for(var i=0; i<component.options.length; i++){
+				var checkbox = $('<input type="radio" class="parameter" />');
+				checkbox.attr('id', id + '_' + i);
+				checkbox.attr('name', name);
+				checkbox.prop('checked', component.default === component.options[i]);
+
+				var label = $('<label>');
+				label.attr('for', id + '_' + i);
+				label.html(component.options[i]);
+
+				input.append(checkbox);
+				input.append(label);
+			}
+		}else{
+			if(component.datatype === 'choice'){
+				var input = $('<select class="parameter table-cell" />');
+				// Select options
+				for(var i=0; i<component.options.length; i++){
+					var option = $('<option>');
+					option.attr('value', component.options[i]);
+					option.html(component.options[i]);
+					input.append(option);
+				}
+			}else if(component.datatype === 'string'){
+				var input = $('<input type="text" />');
+			}else if(component.datatype === 'integer'){
+				var input = $('<input type="text" pattern="\d*" />');
+			}else if(component.datatype === 'float'){
+				var input = $('<input type="text" pattern="\d*(\.\d+)?" />');
+			}else if(component.datatype === 'file'){
+				var input = $('<input type="file" />');
+			}else{
+				alert('Error: Unknown datatype "' + component.datatype + '"');
+				return;
+			}
+
+			input.attr('name', name);
+
+			if(component.datatype !== 'file') // and not a radio button group
+				input.val(component.default);
+
+			input.change(function(e){
+				formHasChanged = true;
+
+				if($(this).is('input') || $(this).is('select')){
+					var buttonSet = $('.buttonset[data-for="'+ $(this).attr('id') +'"]');
+					if($(this).val() == $(this).data('default')){
+						buttonSet.find('.reset').addClass('invisible');
+					}else{
+						buttonSet.find('.reset').removeClass('invisible');
+					}
+				}else if($(this).is('.buttongroup')){
+					//buttonSet.find('.reset').removeClass('invisible');
+				}
+			});
+
+			input.attr('id', id);
+			input.data('default', component.default);
+		}
+
+		return input;
+	}
+
+	/**
+	 * Create a labeled parameter.
+	 *
+	 * @param component the parameter component to build
+	 *
+	 * @return an object containing a label and a value div
+	 */
 	function makeParameter(component){
 		var label = $('<label>');
 
@@ -109,6 +258,15 @@ $(function(){
 
 		var value    = $('<div class="value table">');
 		var valueRow = $('<div class="table-row">');
+
+		if(component.repeat && component.repeat_min == 0){
+			// Minimum amount of values is zero, do not render an input
+			var input = $('<input type="text" class="table-cell dummy invisible" disabled>');
+		}else{
+			var input = makeValue(component);
+		}
+
+		valueRow.append(input);
 		valueRow.append(makeButtonSet(component));
 
 		value.append(valueRow);
@@ -122,8 +280,6 @@ $(function(){
 
 		return paragraph;
 	}
-
-	// }}}
 
 	function renderComponents(container, componentList, callback){
 		var componentsRendered = 0;
@@ -159,6 +315,8 @@ $(function(){
 			callback(err, componentsRendered);
 		});
 	}
+
+	// }}}
 
 	function buildForm(components){
 		console.log('buildForm start');
@@ -281,21 +439,6 @@ $(function(){
 		setLevel($(this).data('name'));
 	});
 
-	$('#haddockform .parameter:not([type="file"])').change(function(e){
-		formHasChanged = true;
-
-		if($(this).is('input') || $(this).is('select')){
-			var buttonSet = $('.buttonset[data-for="'+ $(this).attr('id') +'"]');
-			if($(this).val() == $(this).data('default')){
-				buttonSet.find('.reset').addClass('invisible');
-			}else{
-				buttonSet.find('.reset').removeClass('invisible');
-			}
-		}else if($(this).is('.buttongroup')){
-			//buttonSet.find('.reset').removeClass('invisible');
-		}
-	});
-
 	$('#haddockform input[type="text"]').focus(function(e){
 		// Automatically select input element contents on focus
 		$(this).one('mouseup', function(){
@@ -303,25 +446,6 @@ $(function(){
 			return false;
 		})
 		$(this).select();
-	});
-
-	$('.buttonset i.reset').click(function(e){
-		var buttonSet = $(this).parent('.buttonset');
-		var input = $('#'+buttonSet.data('for'));
-
-		if(input.is('input[type="text"]')){
-			input.val(input.data('default'));
-		}else if(input.is('select')){
-			input.val(input.data('default'));
-		}else if(input.is('.checkgroup')){
-			// Now let's just hope the default value doesn't contain double quotes...
-			input.find('input[type="radio"][value="' + input.data('default') + '"]').prop('checked', true);
-		}
-
-		$(this).addClass('invisible');
-
-		e.preventDefault();
-		e.stopPropagation();
 	});
 
 	$('.buttonset i.plus').click(function(e){

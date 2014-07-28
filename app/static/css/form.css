@@ -128,7 +128,6 @@ form.haddock section {
 form.haddock section header {
 	display: block;
 	padding: 5px;
-	padding-left: 8px;
 	border-bottom: 1px solid #6b1e0c;
 
 	cursor: default;
