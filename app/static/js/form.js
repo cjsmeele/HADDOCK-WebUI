@@ -1,12 +1,12 @@
 "use strict";
 
 $(function(){
-	var formHasChanged   = false;
-	var formLevelTooHigh = false;
-	var components       = formComponents;
-	var componentCount   = 0;
+	var formHasChanged     = false;
+	var formLevelTooHigh   = false;
+	var components         = formComponents;
+	var componentCount     = 0;
+	var componentsRendered = 0;
 
-	// TODO: JS callback pasta needs documentation
 
 	/**
 	 * Get the amount of components in a component tree by looping through sections recursively.
@@ -17,6 +17,7 @@ $(function(){
 	function getComponentCount(componentList, callback){
 		var count = 0;
 
+		// Loop asynchronously
 		async.each(componentList, function(item, f_callback){
 			if(item.type === 'section'){
 				count++;
@@ -321,19 +322,25 @@ $(function(){
 	 * @param callback called when done
 	 */
 	function renderComponents(container, componentList, callback){
-		var componentsRendered = 0;
-
-		async.each(componentList, function(item, f_callback){
+		async.eachLimit(componentList, 8, function(item, f_callback){
 			var row = $('<div class="row">');
 
 			if(item.type === 'section'){
 				var section = makeSection(item);
 
-				renderComponents(section.find('> .content'), item.children, function(err, childrenRendered){
-					componentsRendered += childrenRendered;
+				renderComponents(section.find('> .content'), item.children, function(err){
+					window.setTimeout(f_callback, 0);
 				});
 
 				row.append(section);
+				container.append(row);
+
+				componentsRendered++;
+				//setProgress(componentsRendered / componentCount);
+				//$('#components-loaded').html(componentsRendered);
+
+				return;
+
 			}else if(item.type === 'parameter'){
 				var parameter = makeParameter(item);
 				row.append(parameter.label)
@@ -341,17 +348,19 @@ $(function(){
 			}else if(item.type === 'paragraph'){
 				var paragraph = makeParagraph(item);
 				row.append(paragraph);
+			}else{
+				alert('Unknown component type "' + component.type + '"');
 			}
 
 			container.append(row);
 
 			componentsRendered++;
 			setProgress(componentsRendered / componentCount);
-			$('#components-loaded').html(componentCount);
+			$('#components-loaded').html(componentsRendered);
 
-			f_callback();
+			window.setTimeout(f_callback, 0);
 		}, function(err){
-			callback(err, componentsRendered);
+			callback(err);
 		});
 	}
 
@@ -367,18 +376,21 @@ $(function(){
 
 		async.series([
 			function(callback){
+				window.setTimeout(callback, 0);
+			},
+			function(callback){
 				getComponentCount(components, function(err, count){
 					componentCount = count;
 					$('#components-total').html(componentCount);
 					$('#progress-activity').html('Loading form components');
 					$('#component-progress').removeClass('hidden');
 					setProgress(0);
-					callback();
+					window.setTimeout(callback, 0);
 				});
 			},
 			function(callback){
 				renderComponents($('#haddockform > .content'), components, function(){
-					callback();
+					window.setTimeout(callback, 0);
 				});
 			},
 			function(callback){
@@ -389,7 +401,7 @@ $(function(){
 				$('#haddockform').removeClass('hidden');
 
 				console.log('buildForm end');
-				callback();
+				window.setTimeout(callback, 0);
 			}
 		]);
 	}
@@ -519,5 +531,5 @@ $(function(){
 		e.stopPropagation();
 	});
 
-	buildForm(formComponents);
+	window.setTimeout(function(){buildForm(formComponents)}, 0);
 });
