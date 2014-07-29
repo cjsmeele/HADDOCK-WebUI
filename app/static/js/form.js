@@ -161,7 +161,6 @@ $(function(){
 		if(input.is('input[type="text"]')){
 			input.val(input.attr('data-default'));
 		}else if(input.is('select')){
-			// FIXME: Something's not right with true/false selects
 			input.val(input.attr('data-default'));
 		}else if(input.is('.checkgroup')){
 			// Now let's just hope the default value doesn't contain double quotes...
