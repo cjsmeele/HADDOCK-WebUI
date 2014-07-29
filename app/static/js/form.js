@@ -139,7 +139,7 @@ $(function(){
 	 */
 	function setProgress(fraction){
 		if(fraction > 1)
-			fraction = 100;
+			fraction = 1;
 		else if(fraction < 0)
 			fraction = 0;
 
