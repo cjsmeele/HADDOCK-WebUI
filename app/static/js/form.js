@@ -185,13 +185,13 @@ $(function(){
 		e.stopPropagation();
 	}
 
-
 	// HTML generators, templates {{{
 
 	// NOTE: Using $('<el>') to create elements and el.attr() to assign
 	//       attributes would be a lot more readable, but unfortunately this
 	//       is a lot slower than generating HTML strings ourselves.
 	//       This also means that we need to attach event handlers separately.
+	//       We do this in the finalizeForm() function.
 
 	/**
 	 * Render repeat label and reset, add, remove buttons for a form component.
@@ -350,6 +350,7 @@ $(function(){
 	 * @param callback called when done
 	 */
 	function renderComponents(container, componentList, callback){
+		//async.eachSeries(componentList, function(item, f_callback){
 		async.eachLimit(componentList, 8, function(item, f_callback){
 			var row = '<div class="row';
 
@@ -364,17 +365,26 @@ $(function(){
 				var section = $(makeSection(item));
 
 				renderComponents(section.find('> .content'), item.children, function(err){
-					window.setTimeout(f_callback, 0);
+					row += section[0].outerHTML + '</div>';
+					container.append(row);
+
+					componentsRendered++;
+					if(!(componentsRendered & 0x0f) || componentsRendered === componentCount){
+						setProgress(componentsRendered / componentCount);
+						$('#components-loaded').html(componentsRendered);
+					}
+
+					//FIXME: Doing this asynchronously with setTimeout introduces
+					//       an ordering problem, and additionally seems to drop
+					//       parameters and subsections of large sections.
+					//       We need to fix this somehow. Switching to a
+					//       synchronous each() would affect performance too much...
+					//
+					//       See also the f_callback() call further down.
+
+					//window.setTimeout(f_callback, 0);
+					f_callback();
 				});
-
-				row += section[0].outerHTML + '</div>';
-				container.append(row);
-
-				componentsRendered++;
-				if(!(componentsRendered & 0x0f) || componentsRendered === componentCount){
-					setProgress(componentsRendered / componentCount);
-					$('#components-loaded').html(componentsRendered);
-				}
 
 				return;
 
@@ -398,7 +408,8 @@ $(function(){
 				$('#components-loaded').html(componentsRendered);
 			}
 
-			window.setTimeout(f_callback, 0);
+			//window.setTimeout(f_callback, 0);
+			f_callback();
 		}, function(err){
 			callback(err);
 		});
