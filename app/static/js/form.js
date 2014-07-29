@@ -6,6 +6,7 @@ $(function(){
 	var components         = formComponents;
 	var componentCount     = 0;
 	var componentsRendered = 0;
+	var renderingDone      = false;
 
 
 	/**
@@ -406,36 +407,15 @@ $(function(){
 	// }}}
 
 	/**
-	 * Build a form with the specified list of components.
+	 * Attach event handlers.
+	 * Basically, adds everything to the form that can't be saved in a cache.
 	 *
-	 * @param components
+	 * @param c_callback called on completion
 	 */
-	function buildForm(components){
-		console.log('buildForm start');
-
-		$('html').css('cursor', 'progress');
-
+	function finalizeForm(c_callback){
 		async.series([
 			function(callback){
-				window.setTimeout(callback, 0);
-			},
-			function(callback){
-				getComponentCount(components, function(err, count){
-					componentCount = count;
-					$('#components-total').html(componentCount);
-					$('#progress-activity').html('Loading form components');
-					$('#component-progress').removeClass('hidden');
-					setProgress(0);
-					window.setTimeout(callback, 0);
-				});
-			},
-			function(callback){
-				renderComponents($('#haddockform > .content'), components, function(){
-					window.setTimeout(callback, 0);
-				});
-			},
-			function(callback){
-				// TODO: Attach all event handlers here
+				// Attach all event handlers here
 				// TODO: Put event handlers in separate functions
 
 				$('#haddockform header').click(function(e){
@@ -450,11 +430,6 @@ $(function(){
 					})
 					$(this).select();
 				});
-
-				// Apply data values
-				//$('.buttonset[data-for]').each(function(el){
-				//	$(this).data('for', $(this).attr('data-for'));
-				//});
 
 				$('#haddockform input, #haddockform select').change(function(e){
 					formHasChanged = true;
@@ -476,32 +451,97 @@ $(function(){
 				window.setTimeout(callback, 0);
 			},
 			function(callback){
+				renderingDone = true;
 				// Fold all sections
 				$('#haddockform section').each(function(){ toggleSection(this, true); });
+				// Set form level
 				setLevel(formLevel, true);
-				$('.loading').hide();
+				// Show the form
+				$('.loading').addClass('hidden');
 				$('#haddockform').removeClass('hidden');
-
-				$('html').css('cursor', '');
-
-				console.log('buildForm end');
 				window.setTimeout(callback, 0);
 			}
-		]);
+		], c_callback);
 	}
 
-	function storeForm(){
-		//simpleStorage.deleteKey('test');
-		//simpleStorage.flush();
+	/**
+	 * Build a form with the specified list of components.
+	 *
+	 * @param components
+	 * @param c_callback called on completion
+	 */
+	function buildForm(components, c_callback){
+		console.log('buildForm start');
+
+		$('html').css('cursor', 'progress');
+
+		var formContainer = $('<div>');
+
+		async.series([
+			function(callback){
+				window.setTimeout(callback, 0);
+			},
+			function(callback){
+				getComponentCount(components, function(err, count){
+					componentCount = count;
+					$('#components-total').html(componentCount);
+					$('#progress-activity').html('Loading form components');
+					$('#component-progress, .progress-container').removeClass('hidden');
+					setProgress(0);
+					window.setTimeout(callback, 0);
+				});
+			},
+			function(callback){
+				renderComponents(formContainer, components, function(){
+					window.setTimeout(callback, 0);
+				});
+			},
+		], function(){
+			$('html').css('cursor', '');
+			console.log('buildForm end');
+			window.setTimeout(function(){ c_callback(formContainer); }, 0);
+		});
+	}
+
+	function storeForm(html){
+		simpleStorage.deleteKey('haddock_form_version');
+		simpleStorage.deleteKey('haddock_form');
+
 		console.log('storing form version: ' + modelVersionTag);
+		simpleStorage.set('haddock_form_version', modelVersionTag);
+		simpleStorage.set('haddock_form', html);
 	}
 
 	function loadForm(){
-		var form = simpleStorage.get('HADDOCKForm');
+		var storedVersion = simpleStorage.get('haddock_form_version');
+		if(storedVersion === modelVersionTag){
+			console.log('stored form html version ' + storedVersion + ' is up to date');
+			var form = simpleStorage.get('haddock_form');
+		}else if(typeof(storedVersion) !== 'undefined'
+				&& storedVersion !== null
+				&& storedVersion !== false
+				&& storedVersion.length){
+			// If only there were a cross-browser method of checking whether a localStorage key exists
+			console.log('stored form html version ' + storedVersion + ' is out of date, generating new version '
+				+ modelVersionTag);
+		}else{
+			console.log('no valid form cache found, generating new form version ' + modelVersionTag);
+		}
 
-		if(typeof(form) === 'undefined' || form === null || form === false){
-			buildForm(formComponents);
-			storeForm();
+		if(typeof(form) === 'undefined' || form === null || form === false || !form.length){
+			async.waterfall([
+				function(callback){
+					buildForm(formComponents, function(result){ callback(null, result); });
+				},
+				function(result, callback){
+					$('#haddockform > .content').html(result);
+					storeForm(result.html());
+					finalizeForm();
+				}
+			]);
+		}else{
+			$('#haddockform > .content').html(form);
+			finalizeForm();
 		}
 	}
 
