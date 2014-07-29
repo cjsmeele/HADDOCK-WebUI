@@ -350,7 +350,14 @@ $(function(){
 	 */
 	function renderComponents(container, componentList, callback){
 		async.eachLimit(componentList, 8, function(item, f_callback){
-			var row = '<div class="row">';
+			var row = '<div class="row';
+
+			if('accesslevels' in item){
+				var levelCount = item.accesslevels.length;
+				for(var i=0; i<levelCount; i++)
+					row += ' level-' + item.accesslevels[i];
+				row += '">';
+			}
 
 			if(item.type === 'section'){
 				var section = $(makeSection(item));
@@ -433,6 +440,15 @@ $(function(){
 					toggleSection($(this).parent('section'));
 				});
 
+				$('#haddockform input[type="text"]').focus(function(e){
+					// Automatically select input element contents on focus
+					$(this).one('mouseup', function(){
+						$(this).select();
+						return false;
+					})
+					$(this).select();
+				});
+
 				window.setTimeout(callback, 0);
 			},
 			function(callback){
@@ -470,14 +486,6 @@ $(function(){
 	});
 
 	/*
-	$('#haddockform input[type="text"]').focus(function(e){
-		// Automatically select input element contents on focus
-		$(this).one('mouseup', function(){
-			$(this).select();
-			return false;
-		})
-		$(this).select();
-	});
 
 	$('.buttonset i.plus').click(function(e){
 		// TODO
@@ -494,6 +502,5 @@ $(function(){
 		e.stopPropagation();
 	});*/
 
-	//window.setTimeout(function(){buildForm(formComponents)}, 0);
-	loadForm();
+	setTimeout(loadForm, 0);
 });
