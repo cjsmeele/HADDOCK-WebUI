@@ -161,6 +161,7 @@ $(function(){
 		if(input.is('input[type="text"]')){
 			input.val(input.data('default'));
 		}else if(input.is('select')){
+			// FIXME: Something's not right with true/false selects
 			input.val(input.data('default'));
 		}else if(input.is('.checkgroup')){
 			// Now let's just hope the default value doesn't contain double quotes...
@@ -436,6 +437,8 @@ $(function(){
 			},
 			function(callback){
 				// TODO: Attach all event handlers here
+				// TODO: Put event handlers in separate functions
+
 				$('#haddockform header').click(function(e){
 					toggleSection($(this).parent('section'));
 				});
@@ -448,6 +451,28 @@ $(function(){
 					})
 					$(this).select();
 				});
+
+				// Apply data values
+				//$('.buttonset[data-for]').each(function(el){
+				//	$(this).data('for', $(this).attr('data-for'));
+				//});
+
+				$('#haddockform input, #haddockform select').change(function(e){
+					formHasChanged = true;
+
+					if($(this).is('input') || $(this).is('select')){
+						var buttonSet = $('.buttonset[data-for="'+ $(this).attr('id') +'"]');
+						if($(this).val() == $(this).data('default')){
+							buttonSet.find('.reset').addClass('invisible');
+						}else{
+							buttonSet.find('.reset').removeClass('invisible');
+						}
+					}else if($(this).is('.buttongroup')){
+						//buttonSet.find('.reset').removeClass('invisible');
+					}
+				});
+
+				$('#haddockform .buttonset i.reset').click(onResetButton);
 
 				window.setTimeout(callback, 0);
 			},
