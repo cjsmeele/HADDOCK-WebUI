@@ -493,6 +493,7 @@ $(function(){
 	function storeForm(){
 		//simpleStorage.deleteKey('test');
 		//simpleStorage.flush();
+		console.log('storing form version: ' + modelVersionTag);
 	}
 
 	function loadForm(){

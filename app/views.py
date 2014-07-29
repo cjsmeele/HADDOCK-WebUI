@@ -49,28 +49,30 @@ def get_cached_json(key, filename, cache_condition=True, force_renew=False, auto
         if data is None and auto_retry:
             return get_cached_json(key, filename, cache_condition, True, False)
         else:
-            return data
+            return data, newmtime
     else:
-        return data
+        return data, newmtime
 
-def render_form_template(model, accesslevels, user_accesslevel):
+def render_form_template(model, accesslevels, user_accesslevel, al_mtime, model_mtime):
     return render_template(
         'form.html',
-        title='HADDOCK Form',
-        accesslevels=accesslevels,
-        accesslevel_index=0,
-        model=model,
-        user_accesslevel_index=2
+        title                  = 'HADDOCK Form',
+        accesslevels           = accesslevels,
+        accesslevel_index      = 0,
+        model                  = model,
+        user_accesslevel_index = 2,
+        al_mtime               = al_mtime,
+        model_mtime            = model_mtime,
     )
 
 # Caching is optional. We need the second function definition when cache is not defined.
 if app.config['CACHE_HTML']:
     @cache.memoize()
-    def render_form(model, accesslevels, user_accesslevel):
-        return render_form_template(model, accesslevels, user_accesslevel)
+    def render_form(model, accesslevels, user_accesslevel, al_mtime, model_mtime):
+        return render_form_template(model, accesslevels, user_accesslevel, al_mtime, model_mtime)
 else:
-    def render_form(model, accesslevels, user_accesslevel):
-        return render_form_template(model, accesslevels, user_accesslevel)
+    def render_form(model, accesslevels, user_accesslevel, al_mtime, model_mtime):
+        return render_form_template(model, accesslevels, user_accesslevel, al_mtime, model_mtime)
 
 
 @app.route('/')
@@ -84,12 +86,12 @@ def index():
 
 @app.route('/form')
 def form():
-    accesslevels = get_cached_json(
+    accesslevels, al_mtime = get_cached_json(
         'accesslevels',
         app.config['FRONTEND_ACCESSLEVEL_FILE'],
         app.config['CACHE_ACCESSLEVELS'],
     )
-    model = get_cached_json(
+    model, model_mtime = get_cached_json(
         'model',
         app.config['FRONTEND_MODEL_FILE'],
         app.config['CACHE_MODEL'],
@@ -99,4 +101,4 @@ def form():
         raise ModelFormatError('Could not load model description and/or access levels')
 
     # TODO: Get user access level through auth
-    return render_form(model, accesslevels, 2)
+    return render_form(model, accesslevels, 2, al_mtime, model_mtime)
