@@ -19,9 +19,26 @@ if __name__ == '__main__':
         default = False,
         help    = 'enable debug mode'
     )
+    argparser.add_argument(
+        '-l', '--host',
+        dest    = 'host',
+        default = '127.0.0.1',
+        help    = 'sets a host address to listen on'
+    )
+    argparser.add_argument(
+        '-p', '--port',
+        dest    = 'port',
+        default = '5000',
+        help    = 'the port to listen on'
+    )
 
     args = argparser.parse_args()
 
     from app import app
-    app.run(debug = args.debug)
+
+    app.run(
+        debug = args.debug,
+        host  = args.host,
+        port  = int(args.port),
+    )
 
