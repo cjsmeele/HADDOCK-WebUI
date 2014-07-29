@@ -155,17 +155,17 @@ $(function(){
 	function resetInput(input){
 		var buttonSet = $('.buttonset[data-for="'+ $(input).attr('id') +'"]');
 		//var row = $(input).parents('.row');
-		//input.val(row.data('default'));
-		input.val(input.data('default'));
+		//input.val(row.attr('data-default'));
+		input.val(input.attr('data-default'));
 
 		if(input.is('input[type="text"]')){
-			input.val(input.data('default'));
+			input.val(input.attr('data-default'));
 		}else if(input.is('select')){
 			// FIXME: Something's not right with true/false selects
-			input.val(input.data('default'));
+			input.val(input.attr('data-default'));
 		}else if(input.is('.checkgroup')){
 			// Now let's just hope the default value doesn't contain double quotes...
-			input.find('input[type="radio"][value="' + input.data('default') + '"]').prop('checked', true);
+			input.find('input[type="radio"][value="' + input.attr('data-default') + '"]').prop('checked', true);
 		}
 
 		$(buttonSet).find('i.reset').addClass('invisible');
@@ -281,7 +281,8 @@ $(function(){
 					+ idNameDefaultAttrs + '>';
 				// Select options
 				for(var i=0; i<component.options.length; i++){
-					input += '<option value="' + component.options[i] + '">'
+					input += '<option value="' + component.options[i] + '"'
+						+ (component.default === component.options[i] ? ' selected' : '') + '>'
 						+ component.options[i];
 				}
 				input += '</select>';
@@ -461,7 +462,7 @@ $(function(){
 
 					if($(this).is('input') || $(this).is('select')){
 						var buttonSet = $('.buttonset[data-for="'+ $(this).attr('id') +'"]');
-						if($(this).val() == $(this).data('default')){
+						if($(this).val() == $(this).attr('data-default')){
 							buttonSet.find('.reset').addClass('invisible');
 						}else{
 							buttonSet.find('.reset').removeClass('invisible');
