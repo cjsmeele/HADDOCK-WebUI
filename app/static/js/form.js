@@ -42,7 +42,7 @@ $(function(){
 
 		formLevelIndex = formLevels.indexOf(name);
 
-		var rowsToHide = $('#haddockform .row:not([class~="level-' + name + '"]');
+		var rowsToHide = $('#haddockform .row:not([class~="level-' + name + '"])');
 		var rowsToShow = $('#haddockform .row.level-' + name);
 
 		if(Config.hideDisabledComponents){
@@ -479,7 +479,7 @@ $(function(){
 			function(callback){
 				// Fold all sections
 				$('#haddockform section').each(function(){ toggleSection(this, true); });
-				//setLevel(formLevel, true);
+				setLevel(formLevel, true);
 				$('.loading').hide();
 				$('#haddockform').removeClass('hidden');
 
