@@ -187,6 +187,11 @@ $(function(){
 
 	// HTML generators, templates {{{
 
+	// NOTE: Using $('<el>') to create elements and el.attr() to assign
+	//       attributes would be a lot more readable, but unfortunately this
+	//       is a lot slower than generating HTML strings ourselves.
+	//       This also means that we need to attach event handlers separately.
+
 	/**
 	 * Render repeat label and reset, add, remove buttons for a form component.
 	 *
@@ -196,58 +201,23 @@ $(function(){
 	 * @return a jQuery selector thingy containing a buttonSet div
 	 */
 	function makeButtonSet(component, repeatIndex){
-		if(component.type === 'section'){
-			var buttonSet = $('<div class="buttonset section-buttons float-right">');
-		}else if(component.type === 'parameter'){
-			var buttonSet = $('<div class="buttonset parameter-buttons table-cell shrink">');
-		}else{
-			alert('Error: Cannot render buttonSet for component type "' + component.type + '"');
-			return;
-		}
+		if(typeof(repeatIndex) === 'undefined')
+			repeatIndex = 0
 
-		if(component.type === 'section'){
-			var minusButton = $('<i title="Remove this block" class="minus fa fa-fw fa-minus">')
-			var plusButton  = $('<i title="Add a block of this type" class="plus fa fa-fw fa-plus">')
-		}else{
-			var minusButton = $('<i title="Remove this value" class="minus fa fa-fw fa-minus">')
-			var plusButton  = $('<i title="Add a value" class="plus  fa fa-fw fa-plus">')
-		}
-
-		// Check whether we need to make repeat buttons invisible.
-		if(component.repeat){
-			if(typeof(repeatIndex) === 'undefined')
-				repeatIndex = 0
-
-			if(component.repeat_min === component.repeat_max){
-				plusButton.addClass('invisible');
-			}
-
-			// We show the minimum amount of parameters / section allowed,
-			// we can hide the remove button by default.
-			minusButton.addClass('invisible');
-		}else{
-			minusButton.addClass('invisible');
-			plusButton.addClass('invisible');
-		}
+		var buttonSet = '<div class="buttonset ' + component.type + '-buttons'
+			+ (component.type === 'parameter' ? ' table-cell shrink' : ' float-right') + '"'
+			+ ' data-for="f_' + component.name + (component.repeat ? '_' + repeatIndex : '') + '">';
 
 		if(component.type === 'parameter'){
-			var resetButton = $('<i title="Reset to default value (' + component.default + ')" class="reset fa fa-fw fa-undo">')
-			// New parameters or parameter values will always have the default value, hide the reset button
-			resetButton.addClass('invisible');
-			resetButton.click(onResetButton);
-			buttonSet.append(resetButton);
+			buttonSet += '<i title="Reset to default value (' + component.default
+				+ ')" class="reset fa fa-fw fa-undo invisible"></i>';
 		}
 
-		if(component.repeat)
-			buttonSet.data('for', 'f_' + component.name + '_' + repeatIndex);
-		else
-			buttonSet.data('for', 'f_' + component.name);
-
-		// We need this to allow [data-X="Y"] selectors to work
-		buttonSet.attr('data-for', buttonSet.data('for'));
-
-		buttonSet.append(minusButton);
-		buttonSet.append(plusButton);
+		buttonSet += '<i title="Remove this ' + (component.type === 'section' ? 'block' : 'value') + '" '
+			+ 'class="minus fa fa-fw fa-minus invisible"></i>';
+		buttonSet += '<i title="Add a ' + (component.type === 'section' ? 'block' : 'value') + '" '
+			+ 'class="plus fa fa-fw fa-plus'
+			+ (!component.repeat || component.repeat_max <= repeatIndex ? ' invisible' : '') + '"></i>';
 
 		return buttonSet;
 	}
@@ -260,21 +230,14 @@ $(function(){
 	 * @return a section element
 	 */
 	function makeSection(component){
-		var section = $('<section>');
-		var header  = $('<header>');
-
-		header.append($('<i class="togglebutton fa fa-fw fa-lg fa-angle-double-down">'))
-		      .append($('<span class="header-text">').html(component.label))
-		      .append(makeButtonSet(component));
-
-		var content   = $('<div class="content">');
-
-		section.append(header)
-		       .append(content);
-
-		header.click(function(e){
-			toggleSection(section);
-		});
+		var section = '<section>'
+			+ '<header>'
+			+ '<i class="togglebutton fa fa-fw fa-lg fa-angle-double-down"></i>'
+			+ '<span class="header-text">' + component.label + '</span>'
+			+ makeButtonSet(component)
+			+ '</header>'
+			+ '<div class="content"></div>'
+			+ '</section>';
 
 		return section;
 	}
@@ -297,68 +260,42 @@ $(function(){
 		if(component.datatype === 'choice' && component.options.length > 999){
 			// Special case for radio buttons
 			// TODO
-			var input = $('<div class="checkgroup table-cell" />');
-			input.attr('id', id);
+			var input = '<div class="checkgroup table-cell" id="' + id + '" data-default="' + component.default + '">';
 
 			// List all the options
-			for(var i=0; i<component.options.length; i++){
-				var checkbox = $('<input type="radio" class="parameter" />');
-				checkbox.attr('id', id + '_' + i);
-				checkbox.attr('name', name);
-				checkbox.prop('checked', component.default === component.options[i]);
+			optLen = component.options.length;
+			for(var i=0; i<optLen; i++){
+				var checkbox = '<input type="radio" class="parameter" id="' + id + '_' + i + '" '
+					+ 'name="' + name + '"' + (component.default === component.options[i] ? ' checked' : '')
+					+ ' />';
 
-				var label = $('<label>');
-				label.attr('for', id + '_' + i);
-				label.html(component.options[i]);
-
-				input.append(checkbox);
-				input.append(label);
+				var label = '<label for="' + id + '_' + i + '">' + component.options[i] + '</label>';
+				input += label;
 			}
 		}else{
+			var idNameDefaultAttrs = 'id="' + id + '" name="' + name + '" ' + 'data-default="' + component.default + '"';
+
 			if(component.datatype === 'choice'){
-				var input = $('<select class="parameter table-cell" />');
+				var input = '<select class="parameter table-cell" '
+					+ idNameDefaultAttrs + '>';
 				// Select options
 				for(var i=0; i<component.options.length; i++){
-					var option = $('<option>');
-					option.attr('value', component.options[i]);
-					option.html(component.options[i]);
-					input.append(option);
+					input += '<option value="' + component.options[i] + '">'
+						+ component.options[i];
 				}
+				input += '</select>';
 			}else if(component.datatype === 'string'){
-				var input = $('<input type="text" />');
+				var input = '<input type="text" ' + idNameDefaultAttrs + ' value="' + component.default + '" />';
 			}else if(component.datatype === 'integer'){
-				var input = $('<input type="text" pattern="\d*" />');
+				var input = '<input type="text" pattern="\d*" ' + idNameDefaultAttrs + ' value="' + component.default + '" />';
 			}else if(component.datatype === 'float'){
-				var input = $('<input type="text" pattern="\d*(\.\d+)?" />');
+				var input = '<input type="text" pattern="\d*(\.\d+)?" ' + idNameDefaultAttrs + ' value="' + component.default + '" />';
 			}else if(component.datatype === 'file'){
-				var input = $('<input type="file" />');
+				var input = '<input type="file" ' + idNameDefaultAttrs + ' />';
 			}else{
 				alert('Error: Unknown datatype "' + component.datatype + '"');
 				return;
 			}
-
-			input.attr('name', name);
-
-			if(component.datatype !== 'file') // and not a radio button group
-				input.val(component.default);
-
-			input.change(function(e){
-				formHasChanged = true;
-
-				if($(this).is('input') || $(this).is('select')){
-					var buttonSet = $('.buttonset[data-for="'+ $(this).attr('id') +'"]');
-					if($(this).val() == $(this).data('default')){
-						buttonSet.find('.reset').addClass('invisible');
-					}else{
-						buttonSet.find('.reset').removeClass('invisible');
-					}
-				}else if($(this).is('.buttongroup')){
-					//buttonSet.find('.reset').removeClass('invisible');
-				}
-			});
-
-			input.attr('id', id);
-			input.data('default', component.default);
 		}
 
 		return input;
@@ -372,26 +309,20 @@ $(function(){
 	 * @return an object containing a label and a value div
 	 */
 	function makeParameter(component){
-		var label = $('<label>');
+		var label = '<label for="f_' + component.name + '" title="'
+			+ '(' + component.datatype + ') ' + component.name + ' = ' + component.default + '">'
+			+ (typeof(component.label) === 'undefined' ? component.name : component.label) + '</label>';
 
-		label.attr('for',   'f_' + component.name)
-		     .attr('title', '(' + component.datatype + ') ' + component.name + ' = ' + component.default)
-		     .html(typeof(component.label) === 'undefined' ? component.name : component.label);
-
-		var value    = $('<div class="value table">');
-		var valueRow = $('<div class="table-row">');
+		var value = '<div class="value table"><div class="table-row">';
 
 		if(component.repeat && component.repeat_min == 0){
 			// Minimum amount of values is zero, do not render an input
-			var input = $('<input type="text" class="table-cell dummy invisible" disabled>');
+			value += '<input type="text" class="table-cell dummy invisible" disabled />';
 		}else{
-			var input = makeValue(component);
+			value += makeValue(component);
 		}
 
-		valueRow.append(input);
-		valueRow.append(makeButtonSet(component));
-
-		value.append(valueRow);
+		value += makeButtonSet(component);
 
 		return { 'label': label, 'value': value };
 	}
@@ -419,40 +350,45 @@ $(function(){
 	 */
 	function renderComponents(container, componentList, callback){
 		async.eachLimit(componentList, 8, function(item, f_callback){
-			var row = $('<div class="row">');
+			var row = '<div class="row">';
 
 			if(item.type === 'section'){
-				var section = makeSection(item);
+				var section = $(makeSection(item));
 
 				renderComponents(section.find('> .content'), item.children, function(err){
 					window.setTimeout(f_callback, 0);
 				});
 
-				row.append(section);
+				row += section[0].outerHTML + '</div>';
 				container.append(row);
 
 				componentsRendered++;
-				//setProgress(componentsRendered / componentCount);
-				//$('#components-loaded').html(componentsRendered);
+				if(!(componentsRendered & 0x0f) || componentsRendered === componentCount){
+					setProgress(componentsRendered / componentCount);
+					$('#components-loaded').html(componentsRendered);
+				}
 
 				return;
 
 			}else if(item.type === 'parameter'){
 				var parameter = makeParameter(item);
-				row.append(parameter.label)
-				   .append(parameter.value);
+				row += parameter.label + parameter.value;
 			}else if(item.type === 'paragraph'){
 				var paragraph = makeParagraph(item);
-				row.append(paragraph);
+				row += paragraph;
 			}else{
 				alert('Unknown component type "' + component.type + '"');
 			}
 
+			row += '</div>';
+
 			container.append(row);
 
 			componentsRendered++;
-			setProgress(componentsRendered / componentCount);
-			$('#components-loaded').html(componentsRendered);
+			if(!(componentsRendered & 0x0f) || componentsRendered === componentCount){
+				setProgress(componentsRendered / componentCount);
+				$('#components-loaded').html(componentsRendered);
+			}
 
 			window.setTimeout(f_callback, 0);
 		}, function(err){
@@ -492,6 +428,14 @@ $(function(){
 				});
 			},
 			function(callback){
+				// TODO: Attach all event handlers here
+				$('#haddockform header').click(function(e){
+					toggleSection($(this).parent('section'));
+				});
+
+				window.setTimeout(callback, 0);
+			},
+			function(callback){
 				// Fold all sections
 				$('#haddockform section').each(function(){ toggleSection(this, true); });
 				//setLevel(formLevel, true);
@@ -507,22 +451,25 @@ $(function(){
 	}
 
 	function storeForm(){
-		simpleStorage.deleteKey('test');
+		//simpleStorage.deleteKey('test');
+		//simpleStorage.flush();
 	}
 
 	function loadForm(){
 		var form = simpleStorage.get('HADDOCKForm');
 
-		if(typeof(form) === 'undefined'){
+		if(typeof(form) === 'undefined' || form === null || form === false){
 			buildForm(formComponents);
 			storeForm();
 		}
 	}
 
 	$('.levelchooser li').click(function(e){
+		// TODO: Enable after form loading
 		setLevel($(this).data('name'));
 	});
 
+	/*
 	$('#haddockform input[type="text"]').focus(function(e){
 		// Automatically select input element contents on focus
 		$(this).one('mouseup', function(){
@@ -545,7 +492,7 @@ $(function(){
 
 		e.preventDefault();
 		e.stopPropagation();
-	});
+	});*/
 
 	//window.setTimeout(function(){buildForm(formComponents)}, 0);
 	loadForm();
