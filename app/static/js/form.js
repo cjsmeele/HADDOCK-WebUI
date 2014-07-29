@@ -199,7 +199,7 @@ $(function(){
 	 * @param component a section or parameter form component
 	 * @param repeatIndex an index number if this is not the first element of a repeated component
 	 *
-	 * @return a jQuery selector thingy containing a buttonSet div
+	 * @return a buttonSet div
 	 */
 	function makeButtonSet(component, repeatIndex){
 		if(typeof(repeatIndex) === 'undefined')
@@ -336,8 +336,7 @@ $(function(){
 	 * @return a paragraph element
 	 */
 	function makeParagraph(component){
-		var paragraph = $('<p class="documentation">');
-		paragraph.html(component.text);
+		var paragraph = '<p class="documentation">' + component.text + '</p>';
 
 		return paragraph;
 	}
@@ -357,8 +356,8 @@ $(function(){
 				var levelCount = item.accesslevels.length;
 				for(var i=0; i<levelCount; i++)
 					row += ' level-' + item.accesslevels[i];
-				row += '">';
 			}
+			row += '">';
 
 			if(item.type === 'section'){
 				var section = $(makeSection(item));
