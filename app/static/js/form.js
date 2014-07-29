@@ -512,9 +512,11 @@ $(function(){
 		simpleStorage.set('haddock_form', html);
 	}
 
-	function loadForm(){
+	function loadForm(forceRenew){
 		var storedVersion = simpleStorage.get('haddock_form_version');
-		if(storedVersion === modelVersionTag){
+		if(typeof(forceRenew) !== 'undefined' && forceRenew){
+			console.log('force-refreshing form, dropping html cache');
+		}else if(storedVersion === modelVersionTag){
 			console.log('stored form html version ' + storedVersion + ' is up to date');
 			var form = simpleStorage.get('haddock_form');
 		}else if(typeof(storedVersion) !== 'undefined'
@@ -567,5 +569,13 @@ $(function(){
 		e.stopPropagation();
 	});*/
 
-	setTimeout(loadForm, 0);
+	setTimeout(function(){
+		// Don't load from localStorage cache if the query string contains "nocache".
+		// Note: Doing an indexOf on the entire query string is a bit hacky,
+		//       but we do not have any other parameters, so it's OK for now.
+		if(window.location.search.indexOf('nocache') === -1)
+			loadForm();
+		else
+			loadForm(true);
+	}, 0);
 });
