@@ -411,7 +411,7 @@ $(function(){
 				}
 
 				renderComponents(item.children, function(err){
-					window.setTimeout(f_callback, 0);
+					async.nextTick(f_callback);
 				});
 
 				return;
@@ -432,7 +432,7 @@ $(function(){
 				$('#components-loaded').html(componentsRendered);
 			}
 
-			window.setTimeout(f_callback, 0);
+			async.nextTick(f_callback);
 		}, function(err){
 			callback(err);
 		});
@@ -463,7 +463,7 @@ $(function(){
 							$('#components-loaded').html(componentsInserted);
 						}
 
-						window.setTimeout(f_callback, 0);
+						async.nextTick(f_callback);
 					});
 				}else{
 					// This shouldn't happen
@@ -481,7 +481,7 @@ $(function(){
 				$('#components-loaded').html(componentsInserted);
 			}
 
-			window.setTimeout(f_callback, 0);
+			async.nextTick(f_callback);
 		}, function(err){
 			callback(html);
 		});
@@ -531,7 +531,7 @@ $(function(){
 
 				$('#haddockform .buttonset i.reset').click(onResetButton);
 
-				window.setTimeout(callback, 0);
+				async.nextTick(callback);
 			},
 			function(callback){
 				// Fold all sections
@@ -542,7 +542,7 @@ $(function(){
 				$('.loading').addClass('hidden');
 				$('#haddockform').removeClass('hidden');
 				formReady = true;
-				window.setTimeout(callback, 0);
+				async.nextTick(callback);
 			}
 		], c_callback);
 	}
@@ -560,7 +560,7 @@ $(function(){
 
 		async.series([
 			function(callback){
-				window.setTimeout(callback, 0);
+				async.nextTick(callback);
 			},
 			function(callback){
 				getComponentCount(components, function(err, count){
@@ -569,12 +569,12 @@ $(function(){
 					$('#progress-activity').html('Loading form components');
 					$('#component-progress, .progress-container').removeClass('hidden');
 					setProgress(0);
-					window.setTimeout(callback, 0);
+					async.nextTick(callback);
 				});
 			},
 			function(callback){
 				renderComponents(components, function(){
-					window.setTimeout(callback, 0);
+					async.nextTick(callback);
 				});
 			},
 			function(callback){
@@ -587,12 +587,12 @@ $(function(){
 					progressbar.css('width', '');
 					progressbar.addClass('indeterminate');
 					$('#component-progress').addClass('hidden');
-					window.setTimeout(callback, 0);
+					async.nextTick(callback);
 				});
 			},
 		], function(err){
 			$('html').css('cursor', '');
-			window.setTimeout(function(){ c_callback(html); }, 0);
+			async.nextTick(function(){ c_callback(html); });
 		});
 	}
 
@@ -665,7 +665,7 @@ $(function(){
 		e.stopPropagation();
 	});*/
 
-	setTimeout(function(){
+	async.nextTick(function(){
 		// Don't load from localStorage cache if the query string contains "nocache".
 		// Note: Doing an indexOf on the entire query string is a bit hacky,
 		//       but we do not have any other parameters, so it's OK for now.
@@ -673,5 +673,5 @@ $(function(){
 			loadForm();
 		else
 			loadForm(true);
-	}, 0);
+	});
 });
