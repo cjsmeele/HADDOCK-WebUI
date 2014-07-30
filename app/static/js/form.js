@@ -241,7 +241,7 @@ $(function(){
 			+ 'class="minus fa fa-fw fa-minus invisible"></i>';
 		buttonSet += '<i title="Add a ' + (component.type === 'section' ? 'block' : 'value') + '" '
 			+ 'class="plus fa fa-fw fa-plus'
-			+ (!component.repeat || component.repeat_max <= repeatIndex ? ' invisible' : '') + '"></i>';
+			+ (!component.repeat || (component.repeat_max !== null && component.repeat_max <= repeatIndex) ? ' invisible' : '') + '"></i>';
 
 		buttonSet += '</div>';
 
