@@ -1,13 +1,36 @@
 "use strict";
 
+/**
+ * form.js - HADDOCK form generator
+ *
+ * Execution order:
+ *
+ * - loadForm()
+ *   - Locally cached form HTML available and up to date?
+ *     - Yes:
+ *       - Load form HTML from localStorage
+ *     - No:
+ *       - buildForm()
+ *         - renderComponents() (recursively, parallel)
+ *           - makeX()
+ *         - flattenComponentHTML() (recursively, serial)
+ *         - Attach generated HTML to DOM
+ *       - storeForm()
+ * - finalizeForm()
+ *   - Attach event handlers
+ *   - setLevel()
+ *   - Fold sections
+ *   - Show form
+ */
+
 $(function(){
 	var formHasChanged     = false;
 	var formLevelTooHigh   = false;
 	var components         = formComponents;
 	var componentCount     = 0;
 	var componentsRendered = 0;
-	var renderingDone      = false;
-
+	var componentsInserted = 0;
+	var formReady          = false;
 
 	/**
 	 * Change the form level.
@@ -220,6 +243,8 @@ $(function(){
 			+ 'class="plus fa fa-fw fa-plus'
 			+ (!component.repeat || component.repeat_max <= repeatIndex ? ' invisible' : '') + '"></i>';
 
+		buttonSet += '</div>';
+
 		return buttonSet;
 	}
 
@@ -228,19 +253,23 @@ $(function(){
 	 *
 	 * @param the section component to build
 	 *
-	 * @return a section element
+	 * @return { start: <startHTML>, end: <endHTML> }
 	 */
 	function makeSection(component){
-		var section = '<section>'
+		var sectionStart =
+			  '<section>'
 			+ '<header>'
 			+ '<i class="togglebutton fa fa-fw fa-lg fa-angle-double-down"></i>'
 			+ '<span class="header-text">' + component.label + '</span>'
 			+ makeButtonSet(component)
 			+ '</header>'
-			+ '<div class="content"></div>'
+			+ '<div class="content">';
+
+		var sectionEnd =
+			  '</div>'
 			+ '</section>';
 
-		return section;
+		return { start: sectionStart, end: sectionEnd };
 	}
 
 	/**
@@ -325,6 +354,7 @@ $(function(){
 		}
 
 		value += makeButtonSet(component);
+		value += '</div></div>';
 
 		return { 'label': label, 'value': value };
 	}
@@ -343,64 +373,58 @@ $(function(){
 	}
 
 	/**
-	 * Asynchronously render a list of components and add them to the specified container.
+	 * Asynchronously and recursively render a list of components.
 	 *
-	 * @param container
+	 * Resulting HTML is stored in a component's `html` property. For sections,
+	 * `component.html` is an object instead of a string, containing a `start`
+	 * and an `end` property to be wrapped around child components.
+	 *
 	 * @param componentList
 	 * @param callback called when done
 	 */
-	function renderComponents(container, componentList, callback){
+	function renderComponents(componentList, callback){
 		//async.eachSeries(componentList, function(item, f_callback){
 		async.eachLimit(componentList, 8, function(item, f_callback){
-			var row = '<div class="row';
+			var rowStart = '<div class="row';
 
 			if('accesslevels' in item){
 				var levelCount = item.accesslevels.length;
 				for(var i=0; i<levelCount; i++)
-					row += ' level-' + item.accesslevels[i];
+					rowStart += ' level-' + item.accesslevels[i];
 			}
-			row += '">';
+
+			rowStart  += '">';
+			var rowEnd = '</div>';
 
 			if(item.type === 'section'){
-				var section = $(makeSection(item));
+				//var section = $(makeSection(item));
+				var section = makeSection(item);
+				item.html = {
+					start: rowStart    + section.start,
+					end:   section.end + rowEnd
+				};
 
-				renderComponents(section.find('> .content'), item.children, function(err){
-					row += section[0].outerHTML + '</div>';
-					container.append(row);
+				componentsRendered++;
+				if(!(componentsRendered & 0x0f) || componentsRendered === componentCount){
+					setProgress(componentsRendered / componentCount);
+					$('#components-loaded').html(componentsRendered);
+				}
 
-					componentsRendered++;
-					if(!(componentsRendered & 0x0f) || componentsRendered === componentCount){
-						setProgress(componentsRendered / componentCount);
-						$('#components-loaded').html(componentsRendered);
-					}
-
-					//FIXME: Doing this asynchronously with setTimeout introduces
-					//       an ordering problem, and additionally seems to drop
-					//       parameters and subsections of large sections.
-					//       We need to fix this somehow. Switching to a
-					//       synchronous each() would affect performance too much...
-					//
-					//       See also the f_callback() call further down.
-
-					//window.setTimeout(f_callback, 0);
-					f_callback();
+				renderComponents(item.children, function(err){
+					window.setTimeout(f_callback, 0);
 				});
 
 				return;
 
 			}else if(item.type === 'parameter'){
 				var parameter = makeParameter(item);
-				row += parameter.label + parameter.value;
+				item.html = rowStart + parameter.label + parameter.value + rowEnd;
 			}else if(item.type === 'paragraph'){
 				var paragraph = makeParagraph(item);
-				row += paragraph;
+				item.html = rowStart + paragraph + rowEnd;
 			}else{
-				alert('Unknown component type "' + component.type + '"');
+				alert('Unknown component type "' + item.type + '"');
 			}
-
-			row += '</div>';
-
-			container.append(row);
 
 			componentsRendered++;
 			if(!(componentsRendered & 0x0f) || componentsRendered === componentCount){
@@ -408,10 +432,58 @@ $(function(){
 				$('#components-loaded').html(componentsRendered);
 			}
 
-			//window.setTimeout(f_callback, 0);
-			f_callback();
+			window.setTimeout(f_callback, 0);
 		}, function(err){
 			callback(err);
+		});
+	}
+
+	/**
+	 * Concatenate the generated HTML of a component tree.
+	 *
+	 * @param componentList a list of rendered components to insert
+	 * @param callback called on completion with the generated HTML as a parameter
+	 */
+	function flattenComponentHTML(componentList, callback){
+		var html = '';
+
+		async.eachSeries(componentList, function(item, f_callback){
+			if(typeof(item.html) === 'object'){
+				html += item.html.start;
+
+				if(item.type === 'section'){
+					flattenComponentHTML(item.children, function(result){
+						html += result;
+						// Close the section
+						html += item.html.end;
+
+						componentsInserted++;
+						if(!(componentsInserted & 0x0f) || componentsInserted === componentCount){
+							setProgress(componentsInserted / componentCount);
+							$('#components-loaded').html(componentsInserted);
+						}
+
+						window.setTimeout(f_callback, 0);
+					});
+				}else{
+					// This shouldn't happen
+					alert('Error: Can\'t flatten HTML object of non-section component.');
+				}
+				return;
+
+			}else if(typeof(item.html) === 'string'){
+				html += item.html;
+			}
+
+			componentsInserted++;
+			if(!(componentsInserted & 0x0f) || componentsInserted === componentCount){
+				setProgress(componentsInserted / componentCount);
+				$('#components-loaded').html(componentsInserted);
+			}
+
+			window.setTimeout(f_callback, 0);
+		}, function(err){
+			callback(html);
 		});
 	}
 
@@ -462,7 +534,6 @@ $(function(){
 				window.setTimeout(callback, 0);
 			},
 			function(callback){
-				renderingDone = true;
 				// Fold all sections
 				$('#haddockform section').each(function(){ toggleSection(this, true); });
 				// Set form level
@@ -470,6 +541,7 @@ $(function(){
 				// Show the form
 				$('.loading').addClass('hidden');
 				$('#haddockform').removeClass('hidden');
+				formReady = true;
 				window.setTimeout(callback, 0);
 			}
 		], c_callback);
@@ -482,11 +554,9 @@ $(function(){
 	 * @param c_callback called on completion
 	 */
 	function buildForm(components, c_callback){
-		console.log('buildForm start');
-
 		$('html').css('cursor', 'progress');
 
-		var formContainer = $('<div>');
+		var html;
 
 		async.series([
 			function(callback){
@@ -503,14 +573,26 @@ $(function(){
 				});
 			},
 			function(callback){
-				renderComponents(formContainer, components, function(){
+				renderComponents(components, function(){
 					window.setTimeout(callback, 0);
 				});
 			},
-		], function(){
+			function(callback){
+				setProgress(0);
+				$('#progress-activity').html('Building form');
+				flattenComponentHTML(components, function(result){
+					html = result;
+					$('#progress-activity').html('Rendering');
+					var progressbar = $('#progressbar');
+					progressbar.css('width', '');
+					progressbar.addClass('indeterminate');
+					$('#component-progress').addClass('hidden');
+					window.setTimeout(callback, 0);
+				});
+			},
+		], function(err){
 			$('html').css('cursor', '');
-			console.log('buildForm end');
-			window.setTimeout(function(){ c_callback(formContainer); }, 0);
+			window.setTimeout(function(){ c_callback(html); }, 0);
 		});
 	}
 
@@ -547,8 +629,11 @@ $(function(){
 					buildForm(formComponents, function(result){ callback(null, result); });
 				},
 				function(result, callback){
+					// Note: [0].innerHTML should be faster than html() but the
+					//       difference is barely noticable in FF, Chrome and Safari.
+					//       Also, cross-browser compatibility would not be guaranteed.
 					$('#haddockform > .content').html(result);
-					storeForm(result.html());
+					storeForm(result);
 					finalizeForm();
 				}
 			]);
