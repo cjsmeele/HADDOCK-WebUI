@@ -31,6 +31,7 @@ $(function(){
 	var componentsRendered = 0;
 	var componentsInserted = 0;
 	var formReady          = false;
+	var componentData      = [];
 
 	/**
 	 * Change the form level.
@@ -140,6 +141,10 @@ $(function(){
 
 		// Loop asynchronously
 		async.each(componentList, function(item, f_callback){
+			// Reserve a spot in the componentData array
+			var dataIndex  = componentData.push(item) - 1;
+			item.dataIndex = dataIndex;
+
 			if(item.type === 'section'){
 				count++;
 				getComponentCount(item.children, function(err, childrenCount){
@@ -397,7 +402,7 @@ $(function(){
 					rowStart += ' level-' + item.accesslevels[i];
 			}
 
-			rowStart  += '">';
+			rowStart  += '" data-data-index="' + item.dataIndex + '">';
 			var rowEnd = '</div>';
 
 			if(item.type === 'section'){
