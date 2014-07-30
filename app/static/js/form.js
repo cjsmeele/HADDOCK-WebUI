@@ -545,6 +545,35 @@ $(function(){
 	}
 
 	/**
+	 * Removes hidden components from a copmonent list
+	 *
+	 * @param componentList
+	 * @param callback called when done with a list of filtered components as an argument
+	 */
+	function deleteHiddenComponents(componentList, callback){
+		async.filter(componentList, function(item, f_callback){
+			if('hidden' in item && item.hidden){
+				async.nextTick(function(){ f_callback(false); });
+			}else if(item.type === 'section'){
+				deleteHiddenComponents(item['children'], function(filteredComponents){
+					// Filter out this section if it has no visible children
+					if(filteredComponents.length){
+						item['children'] = filteredComponents;
+						async.nextTick(function(){ f_callback(true); });
+					}else{
+						async.nextTick(function(){ f_callback(false); });
+					}
+				});
+			}else{
+				async.nextTick(function(){ f_callback(true); });
+			}
+		}, function(filteredComponents){
+			async.nextTick(function(){ callback(filteredComponents); });
+			components = filteredComponents;
+		});
+	}
+
+	/**
 	 * Build a form with the specified list of components.
 	 *
 	 * @param components
@@ -557,7 +586,10 @@ $(function(){
 
 		async.series([
 			function(callback){
-				async.nextTick(callback);
+				deleteHiddenComponents(components, function(filteredComponents){
+					components = filteredComponents;
+					async.nextTick(callback);
+				});
 			},
 			function(callback){
 				getComponentCount(components, function(err, count){
