@@ -241,7 +241,8 @@ $(function(){
 			+ 'class="minus fa fa-fw fa-minus invisible"></i>';
 		buttonSet += '<i title="Add a ' + (component.type === 'section' ? 'block' : 'value') + '" '
 			+ 'class="plus fa fa-fw fa-plus'
-			+ (!component.repeat || (component.repeat_max !== null && component.repeat_max <= repeatIndex) ? ' invisible' : '') + '"></i>';
+			+ (!component.repeat || (component.repeat_max !== null && component.repeat_max <= repeatIndex) ? ' invisible' : '')
+			+ '"></i>';
 
 		buttonSet += '</div>';
 
@@ -276,18 +277,22 @@ $(function(){
 	 * Create a value (input, select, checkbox group) for a parameter component.
 	 *
 	 * @param component the parameter component
-	 * @param repeatIndex an optional index number for repeated parameters
+	 * @param repeatIndex an optional index number for repeated parameters, -1 to render a dummy input
 	 *
 	 * @return a value element
 	 */
 	function makeValue(component, repeatIndex){
+		var value = '<div class="value table"><div class="table-row">';
+
 		var name = component.name;
 		if(typeof(repeatIndex) !== 'undefined'){
 			name += '_' + repeatIndex;
 		}
 		var id = 'f_' + name;
 
-		if(component.datatype === 'choice' && component.options.length > 999){
+		if(repeatIndex === -1){
+			var input = '<input type="text" class="table-cell dummy invisible" disabled />';
+		}else if(component.datatype === 'choice' && component.options.length > 999){
 			// Special case for radio buttons
 			// TODO
 			var input = '<div class="checkgroup table-cell" id="' + id + '" data-default="' + component.default + '">';
@@ -329,7 +334,11 @@ $(function(){
 			}
 		}
 
-		return input;
+		value += input;
+		value += makeButtonSet(component);
+		value += '</div></div>';
+
+		return value;
 	}
 
 	/**
@@ -344,17 +353,12 @@ $(function(){
 			+ '(' + component.datatype + ') ' + component.name + ' = ' + component.default + '">'
 			+ (typeof(component.label) === 'undefined' ? component.name : component.label) + '</label>';
 
-		var value = '<div class="value table"><div class="table-row">';
-
 		if(component.repeat && component.repeat_min == 0){
 			// Minimum amount of values is zero, do not render an input
-			value += '<input type="text" class="table-cell dummy invisible" disabled />';
+			var value = makeValue(component, -1);
 		}else{
-			value += makeValue(component);
+			var value = makeValue(component);
 		}
-
-		value += makeButtonSet(component);
-		value += '</div></div>';
 
 		return { 'label': label, 'value': value };
 	}
