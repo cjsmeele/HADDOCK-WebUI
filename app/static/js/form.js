@@ -404,12 +404,6 @@ $(function(){
 					end:   section.end + rowEnd
 				};
 
-				componentsRendered++;
-				if(!(componentsRendered & 0x0f) || componentsRendered === componentCount){
-					setProgress(componentsRendered / componentCount);
-					$('#components-loaded').html(componentsRendered);
-				}
-
 				renderComponents(item.children, function(err){
 					async.nextTick(f_callback);
 				});
@@ -424,12 +418,6 @@ $(function(){
 				item.html = rowStart + paragraph + rowEnd;
 			}else{
 				alert('Unknown component type "' + item.type + '"');
-			}
-
-			componentsRendered++;
-			if(!(componentsRendered & 0x0f) || componentsRendered === componentCount){
-				setProgress(componentsRendered / componentCount);
-				$('#components-loaded').html(componentsRendered);
 			}
 
 			async.nextTick(f_callback);
@@ -566,8 +554,6 @@ $(function(){
 				getComponentCount(components, function(err, count){
 					componentCount = count;
 					$('#components-total').html(componentCount);
-					$('#progress-activity').html('Loading form components');
-					$('#component-progress, .progress-container').removeClass('hidden');
 					setProgress(0);
 					async.nextTick(callback);
 				});
@@ -580,6 +566,8 @@ $(function(){
 			function(callback){
 				setProgress(0);
 				$('#progress-activity').html('Building form');
+				$('#component-progress, .progress-container').removeClass('hidden');
+
 				flattenComponentHTML(components, function(result){
 					html = result;
 					$('#progress-activity').html('Rendering');
