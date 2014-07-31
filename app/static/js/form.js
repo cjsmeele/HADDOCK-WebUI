@@ -157,7 +157,7 @@ $(function(){
 		}, function(err){
 			callback(err, count);
 		});
-	};
+	}
 
 	/**
 	 * Update the loading progressbar with a fraction.
@@ -198,6 +198,56 @@ $(function(){
 		$(buttonSet).find('i.reset').addClass('invisible');
 	}
 
+	// Multi- section/parameter code {{{
+
+	/**
+	 * Remove a section
+	 *
+	 * @param component the section's components / componentData entry
+	 * @param repeatIndex
+	 */
+	function removeSection(component, repeatIndex){
+		// TODO
+	}
+
+	/**
+	 * Remove a parameter value
+	 *
+	 * @param component the parameter's components / componentData entry
+	 * @param repeatIndex
+	 */
+	function removeParameterValue(component, repeatIndex){
+		// TODO
+	}
+
+	/**
+	 * Add a section (called when a plus button is pressed in a section header)
+	 *
+	 * @param container a "row" class div
+	 * @param component the section's components / componentData entry
+	 * @param repeatIndex
+	 */
+	function addSection(container, component, repeatIndex){
+		// TODO: Create section
+		// TODO: Attach event handlers
+	}
+
+	/**
+	 * Add a parameter value (called when a plus button is pressed in a
+	 * parameter row).
+	 *
+	 * @param container a "value" class div
+	 * @param component the parameter's components / componentData entry
+	 * @param repeatIndex
+	 */
+	function addParameterValue(container, component, repeatIndex){
+		// TODO: Create parameter
+		// TODO: Attach event handlers
+	}
+
+	// }}}
+	// Event handlers {{{
+
 	/**
 	 * Event handler for reset buttons.
 	 *
@@ -212,6 +262,32 @@ $(function(){
 		e.stopPropagation();
 	}
 
+	/**
+	 * Event handler for minus buttons.
+	 *
+	 * @param e a click event
+	 */
+	function onMinusButton(e){
+		var buttonSet = $(this).parent('.buttonset');
+		removeParameterValue
+		// Stop click events from reaching the header and folding this section
+		e.preventDefault();
+		e.stopPropagation();
+	}
+
+	/**
+	 * Event handler for plus buttons.
+	 *
+	 * @param e a click event
+	 */
+	function onPlusButton(e){
+		var buttonSet = $(this).parent('.buttonset');
+
+		e.preventDefault();
+		e.stopPropagation();
+	}
+
+	// }}}
 	// HTML generators, templates {{{
 
 	// NOTE: Using $('<el>') to create elements and el.attr() to assign
@@ -224,7 +300,7 @@ $(function(){
 	 * Render repeat label and reset, add, remove buttons for a form component.
 	 *
 	 * @param component a section or parameter form component
-	 * @param repeatIndex an index number if this is not the first element of a repeated component
+	 * @param repeatIndex an optional index number for repeated components, -1 if this is a dummy section / value
 	 *
 	 * @return a buttonSet div
 	 */
@@ -234,7 +310,7 @@ $(function(){
 
 		var buttonSet = '<div class="buttonset ' + component.type + '-buttons'
 			+ (component.type === 'parameter' ? ' table-cell shrink' : ' float-right') + '"'
-			+ ' data-for="f_' + component.name + (component.repeat ? '_' + repeatIndex : '') + '">';
+			+ ' data-for-data-index="' + component.dataIndex + '" data-for-instance="' + (component.repeat ? repeatIndex : '0') + '">';
 
 		if(component.type === 'parameter'){
 			buttonSet += '<i title="Reset to default value (' + component.default
@@ -256,17 +332,18 @@ $(function(){
 	/**
 	 * Create a section component.
 	 *
-	 * @param the section component to build
+	 * @param component the section component to build
+	 * @param repeatIndex an optional index number for repeated sections, -1 to render a dummy section
 	 *
 	 * @return { start: <startHTML>, end: <endHTML> }
 	 */
-	function makeSection(component){
+	function makeSection(component, repeatIndex){
 		var sectionStart =
-			  '<section>'
+			  '<section' + (repeatIndex === -1 ? ' class="dummy"' : '') + '>'
 			+ '<header>'
 			+ '<i class="togglebutton fa fa-fw fa-lg fa-angle-double-down"></i>'
 			+ '<span class="header-text">' + component.label + '</span>'
-			+ makeButtonSet(component)
+			+ makeButtonSet(component, repeatIndex)
 			+ '</header>'
 			+ '<div class="content">';
 
@@ -673,23 +750,6 @@ $(function(){
 		// TODO: Enable after form loading
 		setLevel($(this).data('name'));
 	});
-
-	/*
-
-	$('.buttonset i.plus').click(function(e){
-		// TODO
-
-		// Stop click events from reaching the header and folding this section
-		e.preventDefault();
-		e.stopPropagation();
-	});
-
-	$('.buttonset i.minus').click(function(e){
-		// TODO
-
-		e.preventDefault();
-		e.stopPropagation();
-	});*/
 
 	async.nextTick(function(){
 		// Don't load from localStorage cache if the query string contains "nocache".
