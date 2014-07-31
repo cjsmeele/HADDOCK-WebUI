@@ -2,7 +2,31 @@
 
 /**
  * form.js - HADDOCK form generator
+ */
+
+/**
+ * Coding style for this script:
  *
+ * Write strict-mode compliant JavaScript. See:
+ * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions_and_function_scope/Strict_mode#Changes_in_strict_mode
+ *
+ * Casing: camelCase  for variables and methods
+ *         PascalCase for classes
+ *         UPPER_CASE for constants
+ *
+ * Opening braces:       on the same line
+ * Spaces around braces: only for inline functions: `function(){ a=1; }`
+ *
+ * Indentation: tabs
+ * Alignment:   spaces (align assignments, string concats, etc.)
+ *
+ * Documentation: docblocks before every function
+ *
+ * Wrapping: recommended but not required, at column 120 or 80
+ *           (assume a tab width of 4 characters)
+ */
+
+/**
  * Execution order:
  *
  * - loadForm()
@@ -24,14 +48,18 @@
  */
 
 $(function(){
-	var formHasChanged     = false;
-	var formLevelTooHigh   = false;
+	// Note that the members of components as provided by the webserver follow
+	// a lowercase/underscore naming convention.
 	var components         = formComponents;
+	var componentData      = []; // Flat version of components[].
+	var componentInstances = []; // Actual spawned sections and parameters
 	var componentCount     = 0;
 	var componentsRendered = 0;
 	var componentsInserted = 0;
+
+	var formHasChanged     = false;
+	var formLevelTooHigh   = false;
 	var formReady          = false;
-	var componentData      = [];
 
 	/**
 	 * Change the form level.
@@ -452,6 +480,7 @@ $(function(){
 	 * @return a paragraph element
 	 */
 	function makeParagraph(component){
+
 		var paragraph = '<p class="documentation">' + component.text + '</p>';
 
 		return paragraph;
@@ -469,6 +498,14 @@ $(function(){
 	 */
 	function renderComponents(componentList, callback){
 		async.eachLimit(componentList, 8, function(item, f_callback){
+			// Instantiate the component
+			var instance = {
+				proto: item
+			};
+
+			var instanceIndex = componentInstances.push(instance);
+			item.instances.push(instanceIndex);
+
 			var rowStart = '<div class="row';
 
 			if('accesslevels' in item){
@@ -477,23 +514,54 @@ $(function(){
 					rowStart += ' level-' + item.accesslevels[i];
 			}
 
-			rowStart  += '" data-data-index="' + item.dataIndex + '">';
+			rowStart  += '" data-data-index="' + item.dataIndex + '" data-instance-index="' + instanceIndex + '">';
 			var rowEnd = '</div>';
 
 			if(item.type === 'section'){
-				var section = makeSection(item);
-				item.html = {
-					start: rowStart    + section.start,
-					end:   section.end + rowEnd
-				};
+				instance.children = [];
+				instance.html = {
+					start: rowStart,
+					end:   rowEnd
+				}
+				// XXX 20140731
 
-				renderComponents(item.children, function(err){
+				// For sections we need to handle repetition here.
+				if(item.repeat && item.repeat_min <= 0){
+					// Render a dummy section
+					var section = makeSection(item, -1);
+					instance.html = {
+						start: rowStart    + section.start,
+						end:   section.end + rowEnd
+					};
+
+					// Do not render child components
 					async.nextTick(f_callback);
-				});
+				}else{
+					var instanceCount = (item.repeat ? item.repeat_min : 1);
+					for(var i=0; i<instanceCount; i++){
+						var section = makeSection(item, i);
 
+						var instance = {
+							html: {
+								start: rowStart    + section.start,
+								end:   section.end + rowEnd
+							}
+						};
+
+						// We need to re-render our child components for every section instance
+						renderComponents(item.children, function(err){
+							item.instances.push(instance);
+							async.nextTick(f_callback);
+						});
+					}
+				}
+
+				// Wait for the child renderers to complete
 				return;
 
 			}else if(item.type === 'parameter'){
+				instance.values = [];
+				// Parameter repetition is handled at the value level
 				var parameter = makeParameter(item);
 				item.html = rowStart + parameter.label + parameter.value + rowEnd;
 			}else if(item.type === 'paragraph'){
@@ -606,7 +674,7 @@ $(function(){
 			},
 			function(callback){
 				// Fold all sections
-				$('#haddockform section').each(function(){ toggleSection(this, true); });
+				//$('#haddockform section').each(function(){ toggleSection(this, true); });
 				// Set form level
 				setLevel(formLevel, true);
 				// Show the form
