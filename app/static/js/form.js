@@ -48,7 +48,7 @@ $(function(){
 			return;
 		}
 
-		if(!formLevelTooHigh && formLevels.indexOf(name) < formLevelIndex && formHasChanged){
+		if(!formLevelTooHigh && formLevels.indexOf(name) < formLevelIndex && formHasChanged && force !== true){
 			// Because lower form levels hide certain fields, the user may lose
 			// filled in data by switching to a lower form level.
 			// Although we do not reset input fields, we should warn the user
@@ -61,6 +61,8 @@ $(function(){
 				return;
 			}
 		}
+
+		formHasChanged = false;
 
 		$('.levelchooser li.selected').removeClass('selected');
 		$('.levelchooser li.level-'+name).addClass('selected');
@@ -75,11 +77,8 @@ $(function(){
 			rowsToShow.show();
 		}
 
-		// FIXME: Select elements are not disabled
-		//        (Though this is not really a problem, as they _are_ hidden
-		//        and we do server-side checks as well)
-		rowsToHide.find('> .value input').prop('disabled', true);
-		rowsToShow.find('> .value input').prop('disabled', false);
+		rowsToHide.find('> .value input, > .value select').prop('disabled', true);
+		rowsToShow.find('> .value input, > .value select').prop('disabled', false);
 
 		if(formLevelIndex > userLevel){
 			formLevelTooHigh = true;
@@ -392,7 +391,6 @@ $(function(){
 	 * @param callback called when done
 	 */
 	function renderComponents(componentList, callback){
-		//async.eachSeries(componentList, function(item, f_callback){
 		async.eachLimit(componentList, 8, function(item, f_callback){
 			var rowStart = '<div class="row';
 
@@ -406,7 +404,6 @@ $(function(){
 			var rowEnd = '</div>';
 
 			if(item.type === 'section'){
-				//var section = $(makeSection(item));
 				var section = makeSection(item);
 				item.html = {
 					start: rowStart    + section.start,
@@ -514,7 +511,7 @@ $(function(){
 				$('#haddockform input, #haddockform select').change(function(e){
 					formHasChanged = true;
 
-					if($(this).is('input') || $(this).is('select')){
+					if($(this).is('input[type="text"]') || $(this).is('select')){
 						var buttonSet = $('.buttonset[data-for="'+ $(this).attr('id') +'"]');
 						if($(this).val() == $(this).attr('data-default')){
 							buttonSet.find('.reset').addClass('invisible');
