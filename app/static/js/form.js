@@ -24,6 +24,9 @@
  *
  * Wrapping: recommended but not required, at column 120 or 80
  *           (assume a tab width of 4 characters)
+ *
+ * Aim for compatibility with Firefox 24+, Chrome 33+, Safari 5.1+ and IE8+.
+ * Using jQuery where appropriate, there really shouldn't be any compatibility issues.
  */
 
 /**
@@ -73,6 +76,9 @@
  * `componentInstances[]` will be filled with instances of components.
  * Component instances contain a reference to a `components[]` object, and
  * depending on the component type:
+ * - An optional reference to a parent instance
+ * - An index in the componentInstances[] array
+ * - An index in the component's own instances array
  * (for sections:)
  * - A list of child component instances in `children[]`
  * (for parameters:)
@@ -560,6 +566,8 @@ $(function(){
 	 *
 	 * @param componentList
 	 * @param callback called when done
+	 *
+	 * @fixme Function needs to be rewritten to use component instances correctly.
 	 */
 	function renderComponents(componentList, callback){
 		async.eachLimit(componentList, 8, function(item, f_callback){
@@ -580,7 +588,7 @@ $(function(){
 					start: rowStart,
 					end:   rowEnd
 				}
-				// XXX 20140731
+				// XXX 20140731 (function in need of a rewrite)
 
 				// For sections we need to handle repetition here.
 				if(item.repeat && item.repeat_min <= 0){
@@ -776,27 +784,39 @@ $(function(){
 	 * Create an instance of a form component.
 	 *
 	 * @param component
+	 * @param parentInstance null if this instance is on the root level
 	 * @param callback called on completion with the instance object as an argument
 	 */
-	function createInstance(component, callback){
+	function createInstance(component, parentInstance, callback){
 		var instance = {
 			proto:   component,
+			parent:  parentInstance,
 			element: null
 		};
 
-		console.log('----------------');
-		console.log('creating instance of ' + component.type + ' component id ' + component.dataIndex);
-		if(component.type === 'section')
-			console.log('=== ' + component.label + ' ===');
-		else if(component.type === 'parameter')
-			console.log(':: ' + component.label);
+		componentInstanceCount++;
 
+		// XXX debugging
+		//console.log('----------------');
+		//console.log('creating instance of ' + component.type + ' component id ' + component.dataIndex);
+		//if(component.type === 'section')
+		//	console.log('=== ' + component.label + ' ===');
+		//else if(component.type === 'parameter')
+		//	console.log(':: ' + component.label);
+
+		// Insert this instance in instance arrays and store index values
 		var localInstanceIndex  = component.instances.push(instance) - 1;
 		var globalInstanceIndex = componentInstances.push(instance)  - 1;
 		instance.localIndex     = localInstanceIndex;
 		instance.globalIndex    = globalInstanceIndex;
 
+		// It's nice to let the parents know when their child is born
+		if(parentInstance !== null)
+			parentInstance.children.push(instance);
+
 		if(component.type === 'section'){
+			// Instantiate our own children through instantiateComponents()
+			instance.children = [];
 			instantiateComponents(component.children, instance, function(){
 				async.nextTick(function(){ callback(instance); });
 			});
@@ -817,15 +837,19 @@ $(function(){
 	 * This will fill the componentInstances[] and componentData[] lists.
 	 *
 	 * @param componentList
-	 * @param parentInstance a null value indicates that a parent section has no instances, so
+	 * @param parentInstance false indicates that a parent section has no instances, so
 	 *                       we shouldn't actually create instances ourselves.
-	 *                       pass an empty object if this is a root component.
+	 *                       pass null if this is a root component.
 	 * @param callback called on completion
 	 */
 	function instantiateComponents(componentList, parentInstance, callback){
-		var hasParent = (typeof(parentInstance) !== 'undefined' && parentInstance !== null);
-		// Loop asynchronously
-		async.each(componentList, function(component, eachCallback){
+		var instantiatable  = (parentInstance !== false);
+		var isRootComponent = (parentInstance === null);
+
+		// FIXME: Doing this in parallel causes ordering problems, please find a
+		//        way to work around it without using eachSeries(); Doing it in
+		//        series would be too painful.
+		async.eachLimit(componentList, 8, function(component, eachCallback){
 			if(!('dataIndex' in component)){
 				// This is the first (possible) instance of this component
 				componentCount++;
@@ -835,17 +859,23 @@ $(function(){
 			}
 
 			if(component.type === 'section'){
-				if(hasParent){
+				if(instantiatable){
+					// We have an instantiated parent, check if we should be instantiated as well
 					if(component.repeat && component.repeat_min <= 0){
-						// Because repeat_min is 0, we create no initial instances.
-						// Initialize child components but do not give them a parent instance.
-						instantiateComponents(component.children, null, function(){
+						// Because repeat_min is 0, we create no initial instances of this section.
+						// We cannot and should not instantiate our own children since there is no
+						// parent instance for them. They do need to be initialized by this function
+						// however.
+						instantiateComponents(component.children, false, function(){
 							async.nextTick(eachCallback);
 						});
 					}else{
-						// We can handle the repeat case and the no-repeat case in the same code
-						async.timesSeries((component.repeat ? component.repeat_min : 1), function(i, timesCallback){
-							createInstance(component, function(instance){
+						// We can handle the repeat case and the no-repeat case in the same bit of code.
+						// This loop must be run in series to enforce correct instance order.
+						async.timesSeries((component.repeat ? component.repeat_min : 1),
+								function(i, timesCallback){
+							// createInstance() will handle instantiation of our child components.
+							createInstance(component, parentInstance, function(instance){
 								async.nextTick(timesCallback);
 							});
 						}, function(){
@@ -855,18 +885,19 @@ $(function(){
 					}
 				}else{
 					// Our parent section was not instantiated so we shouldn't create instances either.
-					// Loop through child components
-					instantiateComponents(item.children, null, function(){
+					// We do need to initialize child components though, so loop through them now.
+					instantiateComponents(item.children, false, function(){
 						async.nextTick(eachCallback);
 					});
 				}
 			}else{
-				if(hasParent === true){
-					createInstance(component, function(instance){
+				// We are a parameter or a paragraph
+				if(instantiatable){
+					createInstance(component, parentInstance, function(instance){
 						async.nextTick(eachCallback());
 					});
 				}else{
-					// No parent instance exist, do nothing
+					// No parent instance exists, do nothing
 					async.nextTick(eachCallback);
 				}
 			}
@@ -903,7 +934,7 @@ $(function(){
 				});
 			},*/
 			function(callback){
-				instantiateComponents(components, {}, function(){
+				instantiateComponents(components, null, function(){
 					console.log('dumping componentData:');
 					console.log(componentData);
 					console.log('dumping componentInstances:');
