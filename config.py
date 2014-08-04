@@ -9,7 +9,7 @@ class Config(object):
     # Turn these off if there is no cache backend available or Flask-Cache is
     # not installed.
     CACHE_HTML  = False
-    CACHE_MODEL = True
+    CACHE_MODEL = False
     CACHE_ACCESSLEVELS = CACHE_MODEL
 
     # The simple backend should always be supported when Flask-Cache is installed.

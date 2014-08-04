@@ -241,9 +241,10 @@ $(function(){
 
 		// Loop asynchronously
 		async.each(componentList, function(item, f_callback){
-			// Reserve a spot in the componentData array
-			var dataIndex  = componentData.push(item) - 1;
-			item.dataIndex = dataIndex;
+			if('hidden' in item && item.hidden){
+				f_callback();
+				return;
+			}
 
 			if(item.type === 'section'){
 				count++;
@@ -560,82 +561,55 @@ $(function(){
 	}
 
 	/**
-	 * Asynchronously and recursively render a list of components.
+	 * Asynchronously and recursively render a list of component instances.
 	 *
-	 * Resulting HTML is stored in a component's `html` property. For sections,
-	 * `component.html` is an object instead of a string, containing a `start`
+	 * Resulting HTML is stored in an instance's `html` property. For sections,
+	 * `instance.html` is an object instead of a string, containing a `start`
 	 * and an `end` property to be wrapped around child components.
 	 *
 	 * @param componentList
 	 * @param callback called when done
 	 *
-	 * @fixme Function needs to be rewritten to use component instances correctly.
+	 * @FIXME Where are our dummy components?
 	 */
-	function renderComponents(componentList, callback){
-		async.eachLimit(componentList, 8, function(item, f_callback){
+	function renderComponents(instanceList, callback){
+		async.eachLimit(instanceList, 8, function(instance, f_callback){
 			var rowStart = '<div class="row';
 
-			if('accesslevels' in item){
-				var levelCount = item.accesslevels.length;
+			if('accesslevels' in instance.proto){
+				var levelCount = instance.proto.accesslevels.length;
 				for(var i=0; i<levelCount; i++)
-					rowStart += ' level-' + item.accesslevels[i];
+					rowStart += ' level-' + instance.proto.accesslevels[i];
 			}
 
-			rowStart  += '" data-data-index="' + item.dataIndex + '" data-instance-index="' + instanceIndex + '">';
+			rowStart += '" data-data-index="' + instance.proto.dataIndex + '"';
+
+			if(instance.proto.type === 'section'){
+				rowStart +=
+					  ' data-global-instance-index="' + instance.globalIndex + '"'
+					+ ' data-local-instance-index="'  + instance.localIndex  + '"';
+			}
+
+			rowStart += '">';
+
 			var rowEnd = '</div>';
 
-			if(item.type === 'section'){
-				instance.children = [];
+			if(instance.proto.type === 'section'){
+				var section = makeSection(instance.proto, instance.localIndex);
 				instance.html = {
-					start: rowStart,
-					end:   rowEnd
-				}
-				// XXX 20140731 (function in need of a rewrite)
-
-				// For sections we need to handle repetition here.
-				if(item.repeat && item.repeat_min <= 0){
-					// Render a dummy section
-					var section = makeSection(item, -1);
-					instance.html = {
-						start: rowStart    + section.start,
-						end:   section.end + rowEnd
-					};
-
-					// Do not render child components
-					async.nextTick(f_callback);
-				}else{
-					var instanceCount = (item.repeat ? item.repeat_min : 1);
-					for(var i=0; i<instanceCount; i++){
-						var section = makeSection(item, i);
-
-						var instance = {
-							html: {
-								start: rowStart    + section.start,
-								end:   section.end + rowEnd
-							}
-						};
-
-						// We need to re-render our child components for every section instance
-						renderComponents(item.children, function(err){
-							item.instances.push(instance);
-							async.nextTick(f_callback);
-						});
-					}
-				}
-
-				// Wait for the child renderers to complete
-				return;
-
-			}else if(item.type === 'parameter'){
+					start: rowStart    + section.start,
+					end:   section.end + rowEnd
+				};
+			}else if(instance.proto.type === 'parameter'){
 				instance.values = [];
 				// Parameter repetition is handled at the value level
-				var parameter = makeParameter(item);
-				item.html = rowStart + parameter.label + parameter.value + rowEnd;
-			}else if(item.type === 'paragraph'){
-				var paragraph = makeParagraph(item);
-				item.html = rowStart + paragraph + rowEnd;
+				var parameter = makeParameter(instance.proto);
+				instance.html = rowStart + parameter.label + parameter.value + rowEnd;
+			}else if(instance.proto.type === 'paragraph'){
+				var paragraph = makeParagraph(instance.proto);
+				instance.html = rowStart + paragraph + rowEnd;
 			}else{
-				alert('Unknown component type "' + item.type + '"');
+				alert('Unknown component type "' + instance.proto.type + '"');
 			}
 
 			async.nextTick(f_callback);
@@ -707,6 +681,10 @@ $(function(){
 				// Attach all event handlers here
 				// TODO: Put event handlers in separate functions
 
+				// TODO: Perhaps it is better to use delegated events
+				//       instead of adding event handlers every time a section
+				//       or parameter is multiplied.
+
 				$('#haddockform header').click(function(e){
 					toggleSection($(this).parent('section'));
 				});
@@ -751,35 +729,6 @@ $(function(){
 				async.nextTick(callback);
 			}
 		], c_callback);
-	}
-
-	/**
-	 * Removes hidden components from a copmonent list
-	 *
-	 * @param componentList
-	 * @param callback called when done with a list of filtered components as an argument
-	 */
-	function deleteHiddenComponents(componentList, callback){
-		async.filter(componentList, function(item, f_callback){
-			if('hidden' in item && item.hidden){
-				async.nextTick(function(){ f_callback(false); });
-			}else if(item.type === 'section'){
-				deleteHiddenComponents(item['children'], function(filteredComponents){
-					// Filter out this section if it has no visible children
-					if(filteredComponents.length){
-						item['children'] = filteredComponents;
-						async.nextTick(function(){ f_callback(true); });
-					}else{
-						async.nextTick(function(){ f_callback(false); });
-					}
-				});
-			}else{
-				async.nextTick(function(){ f_callback(true); });
-			}
-		}, function(filteredComponents){
-			async.nextTick(function(){ callback(filteredComponents); });
-			components = filteredComponents;
-		});
 	}
 
 	/**
@@ -946,20 +895,13 @@ $(function(){
 		var html;
 
 		async.series([
-			/*function(callback){
-				deleteHiddenComponents(components, function(filteredComponents){
-					components = filteredComponents;
-					async.nextTick(callback);
-				});
-			},*/
-			/*function(callback){
+			function(callback){
 				getComponentCount(components, function(err, count){
 					componentCount = count;
 					$('#components-total').html(componentCount);
-					setProgress(0);
 					async.nextTick(callback);
 				});
-			},*/
+			},
 			function(callback){
 				instantiateComponents(components, null, function(){
 					console.log('dumping componentData:');
@@ -968,12 +910,12 @@ $(function(){
 					console.log(componentInstances);
 					async.nextTick(callback);
 				});
-			},/*
+			},
 			function(callback){
-				renderComponents(components, function(){
+				renderComponents(componentInstances, function(){
 					async.nextTick(callback);
 				});
-			},*/
+			},
 			function(callback){
 				setProgress(0);
 				$('#progress-activity').html('Building form');
