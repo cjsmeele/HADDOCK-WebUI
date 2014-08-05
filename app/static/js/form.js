@@ -123,7 +123,9 @@ $(function(){
 	// a lowercase/underscore naming convention.
 	var components         = formComponents;
 	var componentData      = []; // Flat version of components[].
-	var componentInstances = []; // Actual spawned sections and parameters
+	var componentInstances = []; // Actual spawned sections and parameters, flat list
+	var rootInstances      = []; // Component instances at the root level (for tree-structure looping)
+	var renderables        = [];
 
 	var componentCount         = 0;
 	var componentInstanceCount = 0;
@@ -439,7 +441,7 @@ $(function(){
 	 *
 	 * @return { start: <startHTML>, end: <endHTML> }
 	 */
-	function makeSection(component, repeatIndex){
+	function makeSectionHTML(component, repeatIndex){
 		var sectionStart =
 			  '<section' + (repeatIndex === -1 ? ' class="dummy"' : '') + '>'
 			+ '<header>'
@@ -454,6 +456,34 @@ $(function(){
 			+ '</section>';
 
 		return { start: sectionStart, end: sectionEnd };
+	}
+
+	/**
+	 * Make repeat_min amount of sections, or 1 if repeat is not set
+	 *
+	 * @param component
+	 * @param callback
+	 */
+	function makeSection(component, callback){
+		var repetitions = [];
+
+		async.timesSeries(component.repeat ? component.repeat_min : 1, function(i, timesCallback){
+			var repetition = {
+				html: null,
+				// Contents are other renderables
+				content:  [],
+				children: []
+			};
+
+			// XXX 1 or 0 based index?
+			repetition.html = makeSectionHTML(component, i);
+
+			repetitions.push(repetition);
+
+			async.nextTick(timesCallback);
+		}, function(){
+			async.nextTick(function(){ callback(repetitions); });
+		});
 	}
 
 	/**
@@ -572,6 +602,7 @@ $(function(){
 	 *
 	 * @FIXME Where are our dummy components?
 	 */
+	/*
 	function renderComponents(instanceList, callback){
 		async.eachLimit(instanceList, 8, function(instance, f_callback){
 			var rowStart = '<div class="row';
@@ -595,7 +626,7 @@ $(function(){
 			var rowEnd = '</div>';
 
 			if(instance.proto.type === 'section'){
-				var section = makeSection(instance.proto, instance.localIndex);
+				var section = makeSection(instance.proto, instance.dummy ? -1 : instance.localIndex);
 				instance.html = {
 					start: rowStart    + section.start,
 					end:   section.end + rowEnd
@@ -617,51 +648,191 @@ $(function(){
 			callback(err);
 		});
 	}
+	*/
 
 	/**
-	 * Concatenate the generated HTML of a component tree.
+	 * Counts components.
+	 * Fills componentData[].
+	 * Adds instance arrays to components.
 	 *
-	 * @param componentList a list of rendered components to insert
+	 * @param components
+	 * @param callback
+	 */
+	function prepareComponents(components, callback){
+		async.each(components, function(component, componentCallback){
+			if('hidden' in component && component.hidden){
+				async.nextTick(componentCallback);
+				return;
+			}
+			componentCount++;
+			var dataIndex       = componentData.push(component) - 1;
+			component.dataIndex = dataIndex;
+			component.instances = [];
+			async.nextTick(componentCallback);
+		}, function(){
+			async.nextTick(callback);
+		});
+	}
+
+	/**
+	 * Fills componentInstances[].
+	 * Fills renderables[].
+	 * Renders instances and dummies.
+	 *
+	 * @param components
+	 * @param callback
+	 */
+	function renderComponents(components, callback, parentInstance, parentRepetition){
+		async.eachSeries(components, function(component, componentCallback){
+			if('hidden' in component && component.hidden){
+				async.nextTick(componentCallback);
+				return;
+			}
+
+			var isRootComponent = (typeof(parentInstance) === 'undefined' || parentInstance === null);
+
+			var instance = {
+				component:        component,
+				parent:           parentInstance,
+				parentRepetition: parentRepetition,
+				hasDummy:         false
+			};
+
+			if(isRootComponent){
+				rootInstances.push(instance);
+			}else{
+				parentInstance.repetitions[parentRepetition].children.push(instance);
+			}
+
+			console.log('rendering something');
+
+			if(component.type === 'section'){
+				console.log('it\'s a section! - ' + component.label);
+
+				instance.repetitions = [];
+
+				if(component.repeat && component.repeat_min == 0){
+					console.log('DUMMY');
+					instance.hasDummy  = true;
+					instance.dummyHTML = makeSectionHTML(component, -1);
+
+					async.nextTick(componentCallback);
+				}else{
+					console.log('not a dummy! rendering children');
+
+					makeSection(component, function(repetitions){
+						instance.repetitions = repetitions;
+						console.log(instance.repetitions);
+						async.times(instance.repetitions.length, function(i, timesCallback){
+							renderComponents(component.children, function(){
+								async.nextTick(timesCallback);
+							}, instance, i);
+						}, function(){
+							async.nextTick(componentCallback);
+						});
+					});
+					//	renderable.push(repetition);
+					//	async.nextTick(timesCallback);
+					//}, function(){
+					//	async.nextTick(componentCallback);
+					//});
+				}
+			}else{
+				// XXX 20140805 ↓
+				instance.renderable = {
+					component:  component,
+					instance:   instance,
+					renderable: {
+						html: ''
+					}
+				};
+
+				if(component.type === 'parameter'){
+					console.log('it\'s a parameter!');
+					//instance.renderable.html = ;
+					instance.renderable.html = 'hurr durr';
+				}else if(component.type === 'paragraph'){
+					instance.renderable.html = makeParagraph(component);
+				}else{
+					alert('Error: Can\'t render unknown component type: ' + component.type);
+				}
+				async.nextTick(componentCallback);
+			}
+			//var renderableIndex = renderables.push(renderable);
+
+			//var rowStart = '<div class="row';
+		}, function(){
+			async.nextTick(callback);
+		});
+	}
+
+	function concatenateComponents(renderables, callback){
+		async.nextTick(callback);
+	}
+
+	/**
+	 * Concatenate the generated HTML of a component instances tree.
+	 *
+	 * @param componentList a list of rendered instances to insert
 	 * @param callback called on completion with the generated HTML as a parameter
 	 */
-	function flattenComponentHTML(componentList, callback){
+	function flattenComponentHTML(instanceList, callback){
 		var html = '';
 
-		async.eachSeries(componentList, function(item, f_callback){
-			if(typeof(item.html) === 'object'){
-				html += item.html.start;
+		console.log('rows');
+		console.log(instanceList);
+		async.eachSeries(instanceList, function(rowContents, rowCallback){
+			console.log('instances');
+			console.log(rowContents);
+			async.eachSeries(rowContents, function(instance, instanceCallback){
+				console.log('instance_');
+				console.log(instance);
+				if(typeof(instance.html) === 'object'){
+					html += instance.html.start;
 
-				if(item.type === 'section'){
-					flattenComponentHTML(item.children, function(result){
-						html += result;
-						// Close the section
-						html += item.html.end;
+					if(instance.proto.type === 'section'){
+						if(instance.dummy){
+								html += instance.html.end;
 
-						componentsInserted++;
-						if(!(componentsInserted & 0x0f) || componentsInserted === componentCount){
-							setProgress(componentsInserted / componentCount);
-							$('#components-loaded').html(componentsInserted);
+								componentsInserted++;
+								async.nextTick(instanceCallback);
+						}else{
+							flattenComponentHTML(instance.children, function(result){
+								html += result;
+								// Close the section
+								html += instance.html.end;
+
+								componentsInserted++;
+								if(!(componentsInserted & 0x0f) || componentsInserted === componentCount){
+									setProgress(componentsInserted / componentCount);
+									$('#components-loaded').html(componentsInserted);
+								}
+
+								async.nextTick(instanceCallback);
+							});
 						}
+					}else{
+						// This shouldn't happen
+						alert('Error: Can\'t flatten HTML object of non-section component.');
+					}
+					return;
 
-						async.nextTick(f_callback);
-					});
+				}else if(typeof(instance.html) === 'string'){
+					html += instance.html;
 				}else{
-					// This shouldn't happen
-					alert('Error: Can\'t flatten HTML object of non-section component.');
+					alert('Error: Instance HTML is neither an start/end object or a string');
 				}
-				return;
 
-			}else if(typeof(item.html) === 'string'){
-				html += item.html;
-			}
+				componentsInserted++;
+				if(!(componentsInserted & 0x0f) || componentsInserted === componentCount){
+					setProgress(componentsInserted / componentCount);
+					$('#components-loaded').html(componentsInserted);
+				}
 
-			componentsInserted++;
-			if(!(componentsInserted & 0x0f) || componentsInserted === componentCount){
-				setProgress(componentsInserted / componentCount);
-				$('#components-loaded').html(componentsInserted);
-			}
-
-			async.nextTick(f_callback);
+				async.nextTick(instanceCallback);
+			}, function(err){
+				rowCallback(null, html);
+			});
 		}, function(err){
 			callback(html);
 		});
@@ -732,19 +903,42 @@ $(function(){
 	}
 
 	/**
+	 * Convert a children object (dataIndex -> instance) to an ordered list
+	 * based on the component's child order.
+	 *
+	 * This modifies the instance.
+	 *
+	 * @param childrenList an ordered list of child components
+	 * @param instance a section component instance with a children object
+	 */
+	function orderInstanceChildren(childrenList, instance){
+		console.log('a');
+		console.log(childrenList);
+		console.log(instance);
+		var orderedChildren = [];
+		for(var i=0; i<childrenList.length; i++){
+			orderedChildren.push(instance.children[childrenList[i].dataIndex]);
+		}
+		instance.children = orderedChildren;
+	}
+
+	/**
 	 * Create an instance of a form component.
 	 *
 	 * @param component
 	 * @param parentInstance null if this instance is on the root level
+	 * @param isDummy if true, inserts a dummy instance
 	 * @param callback called on completion with the instance object as an argument
 	 */
-	function createInstance(component, parentInstance, callback){
+	function createInstance(component, parentInstance, isDummy, callback){
 		var instance = {
 			proto:   component,
 			parent:  parentInstance,
-			element: null
+			element: null,
+			dummy:   isDummy
 		};
 
+		// This will include dummies
 		componentInstanceCount++;
 
 		// XXX debugging
@@ -756,12 +950,18 @@ $(function(){
 		//	console.log(':: ' + component.label);
 
 		// Insert this instance in instance arrays and store index values.
+		// Dummy instances count as instances too
 		var localInstanceIndex  = component.instances.push(instance) - 1;
 		var globalInstanceIndex = componentInstances.push(instance)  - 1;
 		instance.localIndex     = localInstanceIndex;
 		instance.globalIndex    = globalInstanceIndex;
 
-		if(parentInstance !== null){
+		if(parentInstance === null){
+			if(!(component.dataIndex in rootInstances))
+				rootInstances[component.dataIndex] = [];
+
+			rootInstances[component.dataIndex].push(instance);
+		}else{
 			if(!(component.dataIndex in parentInstance.children))
 				parentInstance.children[component.dataIndex] = [];
 
@@ -769,7 +969,7 @@ $(function(){
 			parentInstance.children[component.dataIndex].push(instance);
 		}
 
-		if(component.type === 'section'){
+		if(component.type === 'section' && !isDummy){
 			// Instantiate our own children through instantiateComponents()
 
 			// XXX: NOTE: instance.children is an object, not an array.
@@ -786,15 +986,13 @@ $(function(){
 			//      that high anyway).
 			//      Later on in the rendering step, instance order can be
 			//      derived from the children[] order in the components[] array.
-			//
-			// TODO: Decide whether we should convert this object to a normal
-			//       array when all children are instantiated. This would
-			//       eliminate possible ordering difficulties in the rendering
-			//       step.
 			instance.children = {};
 			// TODO: We also need to figure out something for the root components,
 			//       since there is no root block instance.
 			instantiateComponents(component.children, instance, function(){
+				// Convert the children object to an ordered list based on
+				// our prototype's child order.
+				orderInstanceChildren(component.children, instance);
 				async.nextTick(function(){ callback(instance); });
 			});
 		}else{
@@ -819,6 +1017,7 @@ $(function(){
 	 *                       pass null if this is a root component.
 	 * @param callback called on completion
 	 */
+	/*
 	function instantiateComponents(componentList, parentInstance, callback){
 		var instantiatable  = (parentInstance !== false);
 		var isRootComponent = (parentInstance === null);
@@ -836,13 +1035,19 @@ $(function(){
 				if(instantiatable){
 					// We have an instantiated parent, check if we should be instantiated as well
 					if(component.repeat && component.repeat_min <= 0){
+						// XXX XXX REVIEW DOCUMENTATION
 						// Because repeat_min is 0, we create no initial instances of this section.
 						// We cannot and should not instantiate our own children since there is no
 						// parent instance for them. They do need to be initialized by this function
 						// however.
-						instantiateComponents(component.children, false, function(){
+
+						// Create a dummy instance
+						createInstance(component, parentInstance, true, function(instance){
 							async.nextTick(eachCallback);
 						});
+						//instantiateComponents(component.children, false, function(){
+						//	async.nextTick(eachCallback);
+						//});
 					}else{
 						// We can handle the repeat case and the no-repeat case in the same bit of code.
 
@@ -851,7 +1056,7 @@ $(function(){
 						async.timesSeries((component.repeat ? component.repeat_min : 1),
 								function(i, timesCallback){
 							// createInstance() will handle instantiation of our child components.
-							createInstance(component, parentInstance, function(instance){
+							createInstance(component, parentInstance, false, function(instance){
 								async.nextTick(timesCallback);
 							});
 						}, function(){
@@ -869,7 +1074,7 @@ $(function(){
 			}else{
 				// We are a parameter or a paragraph
 				if(instantiatable){
-					createInstance(component, parentInstance, function(instance){
+					createInstance(component, parentInstance, false, function(instance){
 						async.nextTick(eachCallback());
 					});
 				}else{
@@ -881,6 +1086,7 @@ $(function(){
 			callback();
 		});
 	}
+	*/
 
 	/**
 	 * Build a form with the specified list of components.
@@ -888,20 +1094,30 @@ $(function(){
 	 * @param components
 	 * @param c_callback called on completion
 	 */
-	function buildForm(components, c_callback){
+	function buildForm(components, callback){
 		// We're not hanging your browser, don't worry
 		$('html').css('cursor', 'progress');
 
 		var html;
 
 		async.series([
-			function(callback){
-				getComponentCount(components, function(err, count){
-					componentCount = count;
+			function(stepCallback){
+				//getComponentCount(components, function(err, count){
+				//	componentCount = count;
+				//	$('#components-total').html(componentCount);
+				//	async.nextTick(callback);
+				//});
+				prepareComponents(components, function(){
 					$('#components-total').html(componentCount);
-					async.nextTick(callback);
+					async.nextTick(stepCallback);
 				});
 			},
+			function(stepCallback){
+				renderComponents(components, function(){
+					async.nextTick(stepCallback);
+				});
+			},
+			/*
 			function(callback){
 				instantiateComponents(components, null, function(){
 					console.log('dumping componentData:');
@@ -916,24 +1132,45 @@ $(function(){
 					async.nextTick(callback);
 				});
 			},
-			function(callback){
+			*/
+			function(stepCallback){
+				console.log('survived the rendering step');
+				console.log(rootInstances);
+				async.nextTick(stepCallback);
+			},
+			/*
+			function(stepCallback){
 				setProgress(0);
 				$('#progress-activity').html('Building form');
 				$('#component-progress, .progress-container').removeClass('hidden');
 
-				flattenComponentHTML(components, function(result){
+				console.log('ordering root instances');
+
+				// This sort of hackisly orders the root instance list
+				var rootInstance = { children: rootInstances };
+				orderInstanceChildren(components, rootInstance);
+				rootInstances = rootInstance.children;
+
+				//flattenComponentHTML(components, function(result){
+				console.log('GOT ROOT INSTANCES');
+				console.log(rootInstances);
+				flattenComponentHTML(rootInstances, function(result){
 					html = result;
+					console.log('GENERATED HTML');
+					console.log('==============');
+					console.log(html);
 					$('#progress-activity').html('Rendering');
 					var progressbar = $('#progressbar');
 					progressbar.css('width', '');
 					progressbar.addClass('indeterminate');
 					$('#component-progress').addClass('hidden');
-					async.nextTick(callback);
+					async.nextTick(stepCallback);
 				});
 			},
+			*/
 		], function(err){
 			$('html').css('cursor', '');
-			async.nextTick(function(){ c_callback(html); });
+			async.nextTick(function(){ callback(html); });
 		});
 	}
 
