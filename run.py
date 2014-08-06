@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-import argparse
-
 if __name__ == '__main__':
+    import argparse
+
     argparser = argparse.ArgumentParser(
         description='HADDOCK-WebUI Flask application',
     )

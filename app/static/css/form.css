@@ -75,6 +75,7 @@ div.loading .progress-container .progressbar.indeterminate {
 	padding: 4px;
 	border: 1px solid #6b1e0c;
 	border-left: none;
+	line-height: 1.2;
 
 	text-align: center;
 	cursor: pointer;
