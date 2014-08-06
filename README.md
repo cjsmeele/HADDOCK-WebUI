@@ -9,7 +9,7 @@ HADDOCK-WebUI - A web interface to HADDOCK
 SYNOPSIS
 --------
 
-    ./run.py [--debug]
+    ./run.py [--version] [--debug] [--host LISTEN_ADDRESS] [--port TCP_PORT]
 
 DESCRIPTION
 -----------
