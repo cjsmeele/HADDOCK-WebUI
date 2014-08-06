@@ -509,10 +509,6 @@ $(function(){
 		var value = '<div class="value table"><div class="table-row">';
 
 		var name = instance.component.name;
-		//if(typeof(repeatIndex) !== 'undefined'){
-		//	// Handled by replaceRepetitionPlaceholders() instead
-		//	name += '_' + repeatIndex;
-		//}
 		/**
 		 * Convenience function, @see replaceRepetitionPlaceholders()
 		 *
@@ -700,9 +696,10 @@ $(function(){
 			html += '" data-data-index="'            + component.dataIndex;
 			html += '" data-global-instance-index="' + instance.globalIndex + '">';
 
+			instance.repetitions     = [];
+			instance.repetitionCount = component.repeat_min;
+
 			if(component.type === 'section'){
-				instance.repetitions     = [];
-				instance.repetitionCount = component.repeat_min;
 
 				if(component.repeat && component.repeat_min == 0){
 					instance.hasDummy  = true;
@@ -757,17 +754,12 @@ $(function(){
 		async.series([
 			function(callback){
 				// Attach all event handlers here
-				// TODO: Put event handlers in separate functions
 
-				// TODO: Perhaps it is better to use delegated events
-				//       instead of adding event handlers every time a section
-				//       or parameter is multiplied.
-
-				$('#haddockform section:not([class~="dummy"]) header').click(function(e){
+				$('#haddockform').on('click', 'section:not([class~="dummy"]) header', function(e){
 					toggleSection($(this).parent('section'));
 				});
 
-				$('#haddockform input[type="text"]').focus(function(e){
+				$('#haddockform').on('focus', 'input[type="text"]', function(e){
 					// Automatically select input element contents on focus
 					$(this).one('mouseup', function(){
 						$(this).select();
@@ -776,7 +768,8 @@ $(function(){
 					$(this).select();
 				});
 
-				$('#haddockform input, #haddockform select').change(function(e){
+				$('#haddockform').on('change', 'input, select', function(e){
+					// FIXME: Doesn't work currently
 					formHasChanged = true;
 
 					if($(this).is('input[type="text"]') || $(this).is('select')){
@@ -791,13 +784,19 @@ $(function(){
 					}
 				});
 
-				$('#haddockform .buttonset i.reset').click(onResetButton);
+				$('#haddockform').on('click', '.buttonset i.reset',  onResetButton);
+				$('#haddockform').on('click', '.buttonset i.minus',  onMinusButton);
+				$('#haddockform').on('click', '.buttonset i.plus',   onPlusButton );
+
+				$('.levelchooser').on('click', 'li', function(e){
+					setLevel($(this).data('name'));
+				});
 
 				async.nextTick(callback);
 			},
 			function(callback){
 				// Fold all sections
-				//$('#haddockform section').each(function(){ toggleSection(this, true); });
+				$('#haddockform section').each(function(){ toggleSection(this, true); });
 				// Set form level
 				setLevel(formLevel, true);
 				// Show the form
@@ -905,11 +904,6 @@ $(function(){
 			finalizeForm();
 		}
 	}
-
-	$('.levelchooser li').click(function(e){
-		// TODO: Enable after form loading
-		setLevel($(this).data('name'));
-	});
 
 	async.nextTick(function(){
 		// Don't load from localStorage if the query string contains "nocache".
