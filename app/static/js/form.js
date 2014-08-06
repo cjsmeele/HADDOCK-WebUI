@@ -627,13 +627,19 @@ $(function(){
 	 * @param components
 	 * @param callback
 	 */
-	function prepareComponents(components, callback){
+	function prepareComponents(components, callback, weight){
 		async.each(components, function(component, componentCallback){
 			if('hidden' in component && component.hidden){
 				async.nextTick(componentCallback);
 				return;
 			}
-			componentCount++;
+
+			if(typeof(weight) === 'undefined')
+				weight = 1;
+
+			componentCount         += 1;
+			componentInstanceCount += weight;
+
 			var dataIndex       = componentData.push(component) - 1;
 			component.dataIndex = dataIndex;
 			component.instances = [];
@@ -641,7 +647,7 @@ $(function(){
 			if(component.type === 'section'){
 				prepareComponents(component.children, function(){
 					async.nextTick(componentCallback);
-				});
+				}, (component.repeat ? weight * component.repeat_min : weight));
 			}else{
 				async.nextTick(componentCallback);
 			}
@@ -675,8 +681,6 @@ $(function(){
 				hasDummy:         false
 			};
 
-			console.log(component);
-
 			instance.globalIndex = componentInstances.push(instance);
 			instance.localIndex  = component.instances.push(instance);
 
@@ -700,13 +704,18 @@ $(function(){
 			instance.repetitionCount = component.repeat_min;
 
 			if(component.type === 'section'){
-
 				if(component.repeat && component.repeat_min == 0){
 					instance.hasDummy  = true;
 					var dummyHTML = makeSectionHTML(instance, -1);
 					dummyHTML     = dummyHTML.start + dummyHTML.end;
 
 					html += dummyHTML;
+
+					instancesRendered++;
+					if(!(instancesRendered & 0x0f) || instancesRendered === componentInstanceCount){
+						setProgress(instancesRendered / componentInstanceCount);
+						$('#items-loaded').html(instancesRendered);
+					}
 					async.nextTick(componentCallback);
 				}else{
 					makeSection(instance, function(repetitions){
@@ -720,6 +729,12 @@ $(function(){
 							}, instance, i);
 						}, function(){
 							html += '</div>';
+
+							instancesRendered++;
+							if(!(instancesRendered & 0x0f) || instancesRendered === componentInstanceCount){
+								setProgress(instancesRendered / componentInstanceCount);
+								$('#items-loaded').html(instancesRendered);
+							}
 							async.nextTick(componentCallback);
 						});
 					});
@@ -735,6 +750,11 @@ $(function(){
 				}
 
 				html += '</div>';
+				instancesRendered++;
+				if(!(instancesRendered & 0x0f) || instancesRendered === componentInstanceCount){
+					setProgress(instancesRendered / componentInstanceCount);
+					$('#items-loaded').html(instancesRendered);
+				}
 				async.nextTick(componentCallback);
 			}
 		}, function(){
@@ -823,14 +843,14 @@ $(function(){
 		async.series([
 			function(stepCallback){
 				prepareComponents(components, function(){
-					$('#components-total').html(componentCount);
+					$('#items-total').html(componentInstanceCount);
 					async.nextTick(stepCallback);
 				});
 			},
 			function(stepCallback){
 				setProgress(0);
 				$('#progress-activity').html('Building form');
-				$('#component-progress, .progress-container').removeClass('hidden');
+				$('#form-progress, .progress-container').removeClass('hidden');
 				renderComponents(components, function(renderedHTML){
 					html = renderedHTML;
 					async.nextTick(stepCallback);
@@ -841,7 +861,7 @@ $(function(){
 				var progressbar = $('#progressbar');
 				progressbar.css('width', '');
 				progressbar.addClass('indeterminate');
-				$('#component-progress').addClass('hidden');
+				$('#form-progress').addClass('hidden');
 				async.nextTick(stepCallback);
 			},
 		], function(err){
