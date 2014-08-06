@@ -352,6 +352,52 @@ $(function(){
 	//       is a lot slower than generating HTML strings ourselves.
 
 	/**
+	 * Replace occurrences of repetition index number placeholders with
+	 * the instance's and their parents' repeat indices.
+	 *
+	 * @param string the string to replace occurrences in
+	 * @param instance
+	 * @param repeatIndex
+	 * @param zeroBased (optional) if true, start counting at 0 instead of 1
+	 *
+	 * @return the modified string
+	 */
+	function replaceRepetitionPlaceholders(string, instance, repeatIndex, zeroBased){
+		/**
+		 * Get a list of placeholders and their values for this instance / repetition and its parents.
+		 *
+		 * @param instance
+		 * @param repeatIndex
+		 *
+		 * @return a list of {placeholder: <>, value: <>}, ordered from outermost to innermost component
+		 */
+		function getPlaceholders(instance, repeatIndex){
+			var placeholders = [];
+
+			if('parentInstance' in instance && instance.parentInstance !== null)
+				placeholders = getPlaceholders(instance.parentInstance, instance.parentRepetition);
+
+			if(instance.component.repeat){
+				// The repeat_index component property was not named very well.
+				// It contains the placeholder string for repeatable components
+				// (that should be replaced with a repeatIndex value).
+				placeholders.unshift({
+					placeholder: instance.component.repeat_index,
+					value:       repeatIndex + (typeof(zeroBased) !== 'undefined' && zeroBased === true ? 0 : 1)
+				});
+			}
+			return placeholders;
+		}
+
+		var placeholders = getPlaceholders(instance, repeatIndex);
+
+		for(var i=0; i<placeholders.length; i++)
+			string = string.replace(placeholders[i].placeholder, placeholders[i].value);
+
+		return string;
+	}
+
+	/**
 	 * Render repeat label and reset, add, remove buttons for a form component.
 	 *
 	 * @param instance a section or parameter instance
@@ -369,6 +415,15 @@ $(function(){
 			+ ' data-instance-index="' + instance.globalIndex         + '"'
 			+ ' data-repetition="'     + repeatIndex                  + '">';
 
+		if(instance.component.repeat){
+			if(repeatIndex === -1){
+				// Dummy instance
+				buttonSet += '(none - click to add)';
+			}else{
+				buttonSet += (repeatIndex + 1) + ' / ' + instance.repetitionCount;
+			}
+		}
+
 		if(instance.component.type === 'parameter'){
 			buttonSet += '<i title="Reset to default value (' + instance.component.default
 				+ ')" class="reset fa fa-fw fa-undo invisible"></i>';
@@ -378,7 +433,9 @@ $(function(){
 			+ 'class="minus fa fa-fw fa-minus invisible"></i>';
 		buttonSet += '<i title="Add a ' + (instance.component.type === 'section' ? 'block' : 'value') + '" '
 			+ 'class="plus fa fa-fw fa-plus'
-			+ (!instance.component.repeat || (instance.component.repeat_max !== null && instance.component.repeat_max <= repeatIndex) ? ' invisible' : '')
+			+ (!instance.component.repeat || (instance.component.repeat_max !== null &&
+					instance.repetitionCount >= instance.component.repeat_max)
+				? ' invisible' : '')
 			+ '"></i>';
 
 		buttonSet += '</div>';
@@ -401,7 +458,9 @@ $(function(){
 			+ '>'
 			+ '<header>'
 			+ '<i class="togglebutton fa fa-fw fa-lg fa-angle-double-down"></i>'
-			+ '<span class="header-text">' + instance.component.label + '</span>'
+			+ '<span class="header-text">'
+			+ replaceRepetitionPlaceholders(instance.component.label, instance, repeatIndex)
+			+ '</span>'
 			+ makeButtonSet(instance, repeatIndex)
 			+ '</header>'
 			+ '<div class="content">';
@@ -450,47 +509,61 @@ $(function(){
 		var value = '<div class="value table"><div class="table-row">';
 
 		var name = instance.component.name;
-		if(typeof(repeatIndex) !== 'undefined'){
-			name += '_' + repeatIndex;
+		//if(typeof(repeatIndex) !== 'undefined'){
+		//	// Handled by replaceRepetitionPlaceholders() instead
+		//	name += '_' + repeatIndex;
+		//}
+		/**
+		 * Convenience function, @see replaceRepetitionPlaceholders()
+		 *
+		 * @param string
+		 * @param zeroBased
+		 *
+		 * @return string
+		 */
+		function pfilter(string, zeroBased){
+			return replaceRepetitionPlaceholders(string, instance, repeatIndex, zeroBased);
 		}
-		var id = 'f_' + name;
+
+		var id = 'f_' + pfilter(name);
 
 		if(repeatIndex === -1){
 			var input = '<input type="text" class="table-cell dummy invisible" disabled />';
 		}else if(instance.component.datatype === 'choice' && instance.component.options.length > 999){
 			// Special case for radio buttons
 			// TODO
-			var input = '<div class="checkgroup table-cell" id="' + id + '" data-default="' + instance.component.default + '">';
+			var input = '<div class="checkgroup table-cell" id="' + id + '" data-default="' + pfilter(instance.component.default) + '">';
 
 			// List all the options
 			optLen = instance.component.options.length;
 			for(var i=0; i<optLen; i++){
 				var checkbox = '<input type="radio" class="parameter" id="' + id + '_' + i + '" '
-					+ 'name="' + name + '"' + (instance.component.default === instance.component.options[i] ? ' checked' : '')
+					+ 'name="' + pfilter(name) + '"' + (instance.component.default === instance.component.options[i] ? ' checked' : '')
 					+ ' />';
 
-				var label = '<label for="' + id + '_' + i + '">' + instance.component.options[i] + '</label>';
+				var label = '<label for="' + id + '_' + i + '">' + pfilter(instance.component.options[i]) + '</label>';
 				input += label;
 			}
 		}else{
-			var idNameDefaultAttrs = 'id="' + id + '" name="' + name + '" ' + 'data-default="' + instance.component.default + '"';
+			var idNameDefaultAttrs = 'id="' + id + '" name="' + pfilter(name) + '" '
+				+ 'data-default="' + pfilter(instance.component.default) + '"';
 
 			if(instance.component.datatype === 'choice'){
 				var input = '<select class="parameter table-cell" '
 					+ idNameDefaultAttrs + '>';
 				// Select options
 				for(var i=0; i<instance.component.options.length; i++){
-					input += '<option value="' + instance.component.options[i] + '"'
+					input += '<option value="' + pfilter(instance.component.options[i]) + '"'
 						+ (instance.component.default === instance.component.options[i] ? ' selected' : '') + '>'
-						+ instance.component.options[i];
+						+ pfilter(instance.component.options[i]);
 				}
 				input += '</select>';
 			}else if(instance.component.datatype === 'string'){
-				var input = '<input type="text" ' + idNameDefaultAttrs + ' value="' + instance.component.default + '" />';
+				var input = '<input type="text" ' + idNameDefaultAttrs + ' value="' + pfilter(instance.component.default) + '" />';
 			}else if(instance.component.datatype === 'integer'){
-				var input = '<input type="text" pattern="\d*" ' + idNameDefaultAttrs + ' value="' + instance.component.default + '" />';
+				var input = '<input type="text" pattern="\d*" ' + idNameDefaultAttrs + ' value="' + pfilter(instance.component.default) + '" />';
 			}else if(instance.component.datatype === 'float'){
-				var input = '<input type="text" pattern="\d*(\.\d+)?" ' + idNameDefaultAttrs + ' value="' + instance.component.default + '" />';
+				var input = '<input type="text" pattern="\d*(\.\d+)?" ' + idNameDefaultAttrs + ' value="' + pfilter(instance.component.default) + '" />';
 			}else if(instance.component.datatype === 'file'){
 				var input = '<input type="file" ' + idNameDefaultAttrs + ' />';
 			}else{
@@ -514,11 +587,15 @@ $(function(){
 	 * @return an object containing a label and a value div
 	 */
 	function makeParameter(instance){
-		var label = '<label for="f_' + instance.component.name + '" title="'
+		var label = '<label for="f_'
+			+ replaceRepetitionPlaceholders(instance.component.name, instance, 0)
+			+ '" title="'
 			+ '(' + instance.component.datatype + ') '
-			+ instance.component.name + ' = ' + instance.component.default + '">'
+			+ replaceRepetitionPlaceholders(instance.component.name, instance, 0)
+			+ ' = ' + instance.component.default + '">'
 			+ (typeof(instance.component.label) === 'undefined'
-				? instance.component.name : instance.component.label) + '</label>';
+				? replaceRepetitionPlaceholders(instance.component.name, instance, 0)
+				: replaceRepetitionPlaceholders(instance.component.label, instance, 0)) + '</label>';
 
 		if(instance.component.repeat && instance.component.repeat_min == 0){
 			// Minimum amount of values is zero, do not render an input
@@ -539,7 +616,9 @@ $(function(){
 	 * @return a paragraph element
 	 */
 	function makeParagraph(instance){
-		var paragraph = '<p class="documentation">' + instance.component.text + '</p>';
+		var paragraph = '<p class="documentation">'
+			+ replaceRepetitionPlaceholders(instance.component.text, instance, 0);
+			+ '</p>';
 
 		return paragraph;
 	}
@@ -562,7 +641,14 @@ $(function(){
 			var dataIndex       = componentData.push(component) - 1;
 			component.dataIndex = dataIndex;
 			component.instances = [];
-			async.nextTick(componentCallback);
+
+			if(component.type === 'section'){
+				prepareComponents(component.children, function(){
+					async.nextTick(componentCallback);
+				});
+			}else{
+				async.nextTick(componentCallback);
+			}
 		}, function(){
 			async.nextTick(callback);
 		});
@@ -583,23 +669,20 @@ $(function(){
 				async.nextTick(componentCallback);
 				return;
 			}
-			html += '<div class="row';
-			if('accesslevels' in component){
-				var levelCount = component.accesslevels.length;
-				for(var i=0; i<levelCount; i++)
-					html += ' level-' + component.accesslevels[i];
-			}
-
-			html += '" data-data-index="' + component.dataIndex + '">';
 
 			var isRootComponent = (typeof(parentInstance) === 'undefined' || parentInstance === null);
 
 			var instance = {
 				component:        component,
-				parent:           parentInstance,
-				parentRepetition: parentRepetition,
+				parentInstance:   isRootComponent ? null : parentInstance,
+				parentRepetition: isRootComponent ? null : parentRepetition,
 				hasDummy:         false
 			};
+
+			console.log(component);
+
+			instance.globalIndex = componentInstances.push(instance);
+			instance.localIndex  = component.instances.push(instance);
 
 			if(isRootComponent){
 				rootInstances.push(instance);
@@ -607,8 +690,19 @@ $(function(){
 				parentInstance.repetitions[parentRepetition].children.push(instance);
 			}
 
+			html += '<div class="row';
+			if('accesslevels' in component){
+				var levelCount = component.accesslevels.length;
+				for(var i=0; i<levelCount; i++)
+					html += ' level-' + component.accesslevels[i];
+			}
+
+			html += '" data-data-index="'            + component.dataIndex;
+			html += '" data-global-instance-index="' + instance.globalIndex + '">';
+
 			if(component.type === 'section'){
-				instance.repetitions = [];
+				instance.repetitions     = [];
+				instance.repetitionCount = component.repeat_min;
 
 				if(component.repeat && component.repeat_min == 0){
 					instance.hasDummy  = true;
@@ -669,7 +763,7 @@ $(function(){
 				//       instead of adding event handlers every time a section
 				//       or parameter is multiplied.
 
-				$('#haddockform header').click(function(e){
+				$('#haddockform section:not([class~="dummy"]) header').click(function(e){
 					toggleSection($(this).parent('section'));
 				});
 

@@ -145,6 +145,17 @@ form.haddock section header .togglebutton {
 	cursor: pointer;
 }
 
+form.haddock section.dummy {
+	border: 1px solid #323232;
+}
+form.haddock section.dummy header {
+	background-color: #323232;
+	border-bottom: 1px solid #323232;
+}
+form.haddock section.dummy header .togglebutton {
+	visibility: hidden;
+}
+
 form.haddock section > .content {
 	padding-left: 8px;
 	padding-right: 8px;
