@@ -676,18 +676,27 @@ $(function(){
 
 	/**
 	 * Fills componentInstances[].
-	 * Fills renderables[].
 	 * Renders instances and dummies.
 	 *
 	 * @param components
 	 * @param callback
 	 */
 	function renderComponents(components, callback, parentInstance, parentRepetition){
+		var html = '';
+
 		async.eachSeries(components, function(component, componentCallback){
 			if('hidden' in component && component.hidden){
 				async.nextTick(componentCallback);
 				return;
 			}
+			html += '<div class="row';
+			if('accesslevels' in component){
+				var levelCount = component.accesslevels.length;
+				for(var i=0; i<levelCount; i++)
+					html += ' level-' + component.accesslevels[i];
+			}
+
+			html += '" data-data-index="' + component.dataIndex + '">';
 
 			var isRootComponent = (typeof(parentInstance) === 'undefined' || parentInstance === null);
 
@@ -714,60 +723,47 @@ $(function(){
 				if(component.repeat && component.repeat_min == 0){
 					console.log('DUMMY');
 					instance.hasDummy  = true;
-					instance.dummyHTML = makeSectionHTML(component, -1);
+					var dummyHTML = makeSectionHTML(component, -1);
+					instance.dummyHTML = dummyHTML.start + dummyHTML.end;
 
+					html += instance.dummyHTML;
 					async.nextTick(componentCallback);
 				}else{
 					console.log('not a dummy! rendering children');
 
 					makeSection(component, function(repetitions){
 						instance.repetitions = repetitions;
-						console.log(instance.repetitions);
-						async.times(instance.repetitions.length, function(i, timesCallback){
-							renderComponents(component.children, function(){
+						//console.log(instance.repetitions);
+						async.timesSeries(instance.repetitions.length, function(i, timesCallback){
+							html += repetitions[i].html.start;
+							renderComponents(component.children, function(repetitionHTML){
+								html += repetitionHTML;
+								html += repetitions[i].html.end;
 								async.nextTick(timesCallback);
 							}, instance, i);
 						}, function(){
+							html += '</div>';
 							async.nextTick(componentCallback);
 						});
 					});
-					//	renderable.push(repetition);
-					//	async.nextTick(timesCallback);
-					//}, function(){
-					//	async.nextTick(componentCallback);
-					//});
 				}
 			}else{
-				// XXX 20140805 ↓
-				instance.renderable = {
-					component:  component,
-					instance:   instance,
-					renderable: {
-						html: ''
-					}
-				};
-
 				if(component.type === 'parameter'){
 					console.log('it\'s a parameter!');
-					//instance.renderable.html = ;
-					instance.renderable.html = 'hurr durr';
+					var parameter = makeParameter(component);
+					html += parameter.label + parameter.value;
 				}else if(component.type === 'paragraph'){
-					instance.renderable.html = makeParagraph(component);
+					html += makeParagraph(component);
 				}else{
 					alert('Error: Can\'t render unknown component type: ' + component.type);
 				}
+
+				html += '</div>';
 				async.nextTick(componentCallback);
 			}
-			//var renderableIndex = renderables.push(renderable);
-
-			//var rowStart = '<div class="row';
 		}, function(){
-			async.nextTick(callback);
+			async.nextTick(function(){ callback(html); });
 		});
-	}
-
-	function concatenateComponents(renderables, callback){
-		async.nextTick(callback);
 	}
 
 	/**
@@ -792,10 +788,10 @@ $(function(){
 
 					if(instance.proto.type === 'section'){
 						if(instance.dummy){
-								html += instance.html.end;
+							html += instance.html.end;
 
-								componentsInserted++;
-								async.nextTick(instanceCallback);
+							componentsInserted++;
+							async.nextTick(instanceCallback);
 						}else{
 							flattenComponentHTML(instance.children, function(result){
 								html += result;
@@ -930,6 +926,7 @@ $(function(){
 	 * @param isDummy if true, inserts a dummy instance
 	 * @param callback called on completion with the instance object as an argument
 	 */
+	/*
 	function createInstance(component, parentInstance, isDummy, callback){
 		var instance = {
 			proto:   component,
@@ -1006,6 +1003,7 @@ $(function(){
 			async.nextTick(function(){ callback(instance); });
 		}
 	}
+	*/
 
 	/**
 	 * Create initial instances for all non-hidden components, respecting their repeat attributes.
@@ -1113,7 +1111,9 @@ $(function(){
 				});
 			},
 			function(stepCallback){
-				renderComponents(components, function(){
+				renderComponents(components, function(renderedHTML){
+					html = renderedHTML;
+					console.log(html);
 					async.nextTick(stepCallback);
 				});
 			},
