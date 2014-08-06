@@ -354,29 +354,31 @@ $(function(){
 	/**
 	 * Render repeat label and reset, add, remove buttons for a form component.
 	 *
-	 * @param component a section or parameter form component
-	 * @param repeatIndex an optional index number for repeated components, -1 if this is a dummy section / value
+	 * @param instance a section or parameter instance
+	 * @param repeatIndex an index number for repeated components, -1 if this is a dummy section / value
 	 *
 	 * @return a buttonSet div
 	 */
-	function makeButtonSet(component, repeatIndex){
+	function makeButtonSet(instance, repeatIndex){
 		if(typeof(repeatIndex) === 'undefined')
 			repeatIndex = 0
 
-		var buttonSet = '<div class="buttonset ' + component.type + '-buttons'
-			+ (component.type === 'parameter' ? ' table-cell shrink' : ' float-right') + '"'
-			+ ' data-for-data-index="' + component.dataIndex + '" data-for-instance="' + (component.repeat ? repeatIndex : '0') + '">';
+		var buttonSet = '<div class="buttonset ' + instance.component.type + '-buttons'
+			+ (instance.component.type === 'parameter' ? ' table-cell shrink' : ' float-right') + '"'
+			+ ' data-data-index="'     + instance.component.dataIndex + '"'
+			+ ' data-instance-index="' + instance.globalIndex         + '"'
+			+ ' data-repetition="'     + repeatIndex                  + '">';
 
-		if(component.type === 'parameter'){
-			buttonSet += '<i title="Reset to default value (' + component.default
+		if(instance.component.type === 'parameter'){
+			buttonSet += '<i title="Reset to default value (' + instance.component.default
 				+ ')" class="reset fa fa-fw fa-undo invisible"></i>';
 		}
 
-		buttonSet += '<i title="Remove this ' + (component.type === 'section' ? 'block' : 'value') + '" '
+		buttonSet += '<i title="Remove this ' + (instance.component.type === 'section' ? 'block' : 'value') + '" '
 			+ 'class="minus fa fa-fw fa-minus invisible"></i>';
-		buttonSet += '<i title="Add a ' + (component.type === 'section' ? 'block' : 'value') + '" '
+		buttonSet += '<i title="Add a ' + (instance.component.type === 'section' ? 'block' : 'value') + '" '
 			+ 'class="plus fa fa-fw fa-plus'
-			+ (!component.repeat || (component.repeat_max !== null && component.repeat_max <= repeatIndex) ? ' invisible' : '')
+			+ (!instance.component.repeat || (instance.component.repeat_max !== null && instance.component.repeat_max <= repeatIndex) ? ' invisible' : '')
 			+ '"></i>';
 
 		buttonSet += '</div>';
@@ -387,20 +389,20 @@ $(function(){
 	/**
 	 * Create the HTML for a single section component repetition.
 	 *
-	 * @param component the section component to build
+	 * @param instance the section instance to build
 	 * @param repeatIndex an index number for repeated sections, -1 to render a dummy section
 	 *
 	 * @return { start: <startHTML>, end: <endHTML> }
 	 */
-	function makeSectionHTML(component, repeatIndex){
+	function makeSectionHTML(instance, repeatIndex){
 		var sectionStart =
 			  '<section' + (repeatIndex === -1 ? ' class="dummy"' : '')
 			+ (repeatIndex !== -1 ? ' data-repeat-index="' + repeatIndex + '"' : '')
 			+ '>'
 			+ '<header>'
 			+ '<i class="togglebutton fa fa-fw fa-lg fa-angle-double-down"></i>'
-			+ '<span class="header-text">' + component.label + '</span>'
-			+ makeButtonSet(component, repeatIndex)
+			+ '<span class="header-text">' + instance.component.label + '</span>'
+			+ makeButtonSet(instance, repeatIndex)
 			+ '</header>'
 			+ '<div class="content">';
 
@@ -414,19 +416,19 @@ $(function(){
 	/**
 	 * Make repeat_min amount of sections, or 1 if repeat is not set.
 	 *
-	 * @param component
+	 * @param instance
 	 * @param callback called with an array of repetitions, each having a html {start: S, end: S} property
 	 */
-	function makeSection(component, callback){
+	function makeSection(instance, callback){
 		var repetitions = [];
 
-		async.timesSeries(component.repeat ? component.repeat_min : 1, function(i, timesCallback){
+		async.timesSeries(instance.component.repeat ? instance.component.repeat_min : 1, function(i, timesCallback){
 			var repetition = {
 				html: null,
 				children: []
 			};
 
-			repetition.html = makeSectionHTML(component, i);
+			repetition.html = makeSectionHTML(instance, i);
 
 			repetitions.push(repetition);
 
@@ -439,15 +441,15 @@ $(function(){
 	/**
 	 * Create a value (input, select, checkbox group) for a parameter component.
 	 *
-	 * @param component the parameter component
-	 * @param repeatIndex an optional index number for repeated parameters, -1 to render a dummy input
+	 * @param instance the parameter instance
+	 * @param repeatIndex an index number for repeated parameters, -1 to render a dummy input
 	 *
 	 * @return a value element
 	 */
-	function makeValue(component, repeatIndex){
+	function makeValue(instance, repeatIndex){
 		var value = '<div class="value table"><div class="table-row">';
 
-		var name = component.name;
+		var name = instance.component.name;
 		if(typeof(repeatIndex) !== 'undefined'){
 			name += '_' + repeatIndex;
 		}
@@ -455,50 +457,50 @@ $(function(){
 
 		if(repeatIndex === -1){
 			var input = '<input type="text" class="table-cell dummy invisible" disabled />';
-		}else if(component.datatype === 'choice' && component.options.length > 999){
+		}else if(instance.component.datatype === 'choice' && instance.component.options.length > 999){
 			// Special case for radio buttons
 			// TODO
-			var input = '<div class="checkgroup table-cell" id="' + id + '" data-default="' + component.default + '">';
+			var input = '<div class="checkgroup table-cell" id="' + id + '" data-default="' + instance.component.default + '">';
 
 			// List all the options
-			optLen = component.options.length;
+			optLen = instance.component.options.length;
 			for(var i=0; i<optLen; i++){
 				var checkbox = '<input type="radio" class="parameter" id="' + id + '_' + i + '" '
-					+ 'name="' + name + '"' + (component.default === component.options[i] ? ' checked' : '')
+					+ 'name="' + name + '"' + (instance.component.default === instance.component.options[i] ? ' checked' : '')
 					+ ' />';
 
-				var label = '<label for="' + id + '_' + i + '">' + component.options[i] + '</label>';
+				var label = '<label for="' + id + '_' + i + '">' + instance.component.options[i] + '</label>';
 				input += label;
 			}
 		}else{
-			var idNameDefaultAttrs = 'id="' + id + '" name="' + name + '" ' + 'data-default="' + component.default + '"';
+			var idNameDefaultAttrs = 'id="' + id + '" name="' + name + '" ' + 'data-default="' + instance.component.default + '"';
 
-			if(component.datatype === 'choice'){
+			if(instance.component.datatype === 'choice'){
 				var input = '<select class="parameter table-cell" '
 					+ idNameDefaultAttrs + '>';
 				// Select options
-				for(var i=0; i<component.options.length; i++){
-					input += '<option value="' + component.options[i] + '"'
-						+ (component.default === component.options[i] ? ' selected' : '') + '>'
-						+ component.options[i];
+				for(var i=0; i<instance.component.options.length; i++){
+					input += '<option value="' + instance.component.options[i] + '"'
+						+ (instance.component.default === instance.component.options[i] ? ' selected' : '') + '>'
+						+ instance.component.options[i];
 				}
 				input += '</select>';
-			}else if(component.datatype === 'string'){
-				var input = '<input type="text" ' + idNameDefaultAttrs + ' value="' + component.default + '" />';
-			}else if(component.datatype === 'integer'){
-				var input = '<input type="text" pattern="\d*" ' + idNameDefaultAttrs + ' value="' + component.default + '" />';
-			}else if(component.datatype === 'float'){
-				var input = '<input type="text" pattern="\d*(\.\d+)?" ' + idNameDefaultAttrs + ' value="' + component.default + '" />';
-			}else if(component.datatype === 'file'){
+			}else if(instance.component.datatype === 'string'){
+				var input = '<input type="text" ' + idNameDefaultAttrs + ' value="' + instance.component.default + '" />';
+			}else if(instance.component.datatype === 'integer'){
+				var input = '<input type="text" pattern="\d*" ' + idNameDefaultAttrs + ' value="' + instance.component.default + '" />';
+			}else if(instance.component.datatype === 'float'){
+				var input = '<input type="text" pattern="\d*(\.\d+)?" ' + idNameDefaultAttrs + ' value="' + instance.component.default + '" />';
+			}else if(instance.component.datatype === 'file'){
 				var input = '<input type="file" ' + idNameDefaultAttrs + ' />';
 			}else{
-				alert('Error: Unknown datatype "' + component.datatype + '"');
+				alert('Error: Unknown datatype "' + instance.component.datatype + '"');
 				return;
 			}
 		}
 
 		value += input;
-		value += makeButtonSet(component);
+		value += makeButtonSet(instance);
 		value += '</div></div>';
 
 		return value;
@@ -507,20 +509,23 @@ $(function(){
 	/**
 	 * Create a labeled parameter.
 	 *
-	 * @param component the parameter component to build
+	 * @param instance the parameter instance to build
 	 *
 	 * @return an object containing a label and a value div
 	 */
-	function makeParameter(component){
-		var label = '<label for="f_' + component.name + '" title="'
-			+ '(' + component.datatype + ') ' + component.name + ' = ' + component.default + '">'
-			+ (typeof(component.label) === 'undefined' ? component.name : component.label) + '</label>';
+	function makeParameter(instance){
+		var label = '<label for="f_' + instance.component.name + '" title="'
+			+ '(' + instance.component.datatype + ') '
+			+ instance.component.name + ' = ' + instance.component.default + '">'
+			+ (typeof(instance.component.label) === 'undefined'
+				? instance.component.name : instance.component.label) + '</label>';
 
-		if(component.repeat && component.repeat_min == 0){
+		if(instance.component.repeat && instance.component.repeat_min == 0){
 			// Minimum amount of values is zero, do not render an input
-			var value = makeValue(component, -1);
+			var value = makeValue(instance, -1);
 		}else{
-			var value = makeValue(component);
+			// TODO: Do something about repetitions here
+			var value = makeValue(instance, 0);
 		}
 
 		return { 'label': label, 'value': value };
@@ -529,12 +534,12 @@ $(function(){
 	/**
 	 * Create a documentation / standalone paragraph.
 	 *
-	 * @param component the paragraph component to build
+	 * @param instance the paragraph instance to build
 	 *
 	 * @return a paragraph element
 	 */
-	function makeParagraph(component){
-		var paragraph = '<p class="documentation">' + component.text + '</p>';
+	function makeParagraph(instance){
+		var paragraph = '<p class="documentation">' + instance.component.text + '</p>';
 
 		return paragraph;
 	}
@@ -607,13 +612,13 @@ $(function(){
 
 				if(component.repeat && component.repeat_min == 0){
 					instance.hasDummy  = true;
-					var dummyHTML = makeSectionHTML(component, -1);
+					var dummyHTML = makeSectionHTML(instance, -1);
 					dummyHTML     = dummyHTML.start + dummyHTML.end;
 
 					html += dummyHTML;
 					async.nextTick(componentCallback);
 				}else{
-					makeSection(component, function(repetitions){
+					makeSection(instance, function(repetitions){
 						instance.repetitions = repetitions;
 						async.timesSeries(instance.repetitions.length, function(i, timesCallback){
 							html += repetitions[i].html.start;
@@ -630,10 +635,10 @@ $(function(){
 				}
 			}else{
 				if(component.type === 'parameter'){
-					var parameter = makeParameter(component);
+					var parameter = makeParameter(instance);
 					html += parameter.label + parameter.value;
 				}else if(component.type === 'paragraph'){
-					html += makeParagraph(component);
+					html += makeParagraph(instance);
 				}else{
 					alert('Error: Can\'t render unknown component type: ' + component.type);
 				}
