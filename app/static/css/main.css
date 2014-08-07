@@ -360,21 +360,21 @@ form.nice .row > label {
 /* }}} */
 /* Fields with a div around input elements {{{ */
 
-form.nice .row > .value {
+form.nice .row > .values {
 	float: left;
 }
 
-form.nice .row > .value > * {
+form.nice .row > .values > * {
 	white-space: nowrap;
 }
 
-form.nice .row > .value > .table-row > input,
-form.nice .row > .value > .table-row > input[type="text"],
-form.nice .row > .value > .table-row > input[type="password"],
-form.nice .row > .value > .table-row > input[type="number"],
-form.nice .row > .value > .table-row > select,
-form.nice .row > .value > .table-row > .select2,
-form.nice .row > .value > .table-row > .checkgroup
+form.nice .row > .values > .table-row > input,
+form.nice .row > .values > .table-row > input[type="text"],
+form.nice .row > .values > .table-row > input[type="password"],
+form.nice .row > .values > .table-row > input[type="number"],
+form.nice .row > .values > .table-row > select,
+form.nice .row > .values > .table-row > .select2,
+form.nice .row > .values > .table-row > .checkgroup
 {
 	width: 100%;
 }
@@ -387,7 +387,7 @@ form.nice .row > input[type="number"],
 form.nice .row > select,
 form.nice .row > .select2,
 form.nice .row > .checkgroup,
-form.nice .row > .value
+form.nice .row > .values
 {
 	width: 60%;
 }
@@ -401,7 +401,7 @@ form.nice.div60 .row > input[type="password"],
 form.nice.div60 .row > input[type="number"],
 form.nice.div60 .row > select,
 form.nice.div60 .row > .select2,
-form.nice.div60 .row > .value
+form.nice.div60 .row > .values
 {
 	width: 40%;
 }

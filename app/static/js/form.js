@@ -166,8 +166,8 @@ $(function(){
 			rowsToShow.show();
 		}
 
-		rowsToHide.find('> .value input, > .value select').prop('disabled', true);
-		rowsToShow.find('> .value input, > .value select').prop('disabled', false);
+		rowsToHide.find('> .values input, > .values select').prop('disabled', true);
+		rowsToShow.find('> .values input, > .values select').prop('disabled', false);
 
 		if(formLevelIndex > userLevel){
 			formLevelTooHigh = true;
@@ -258,48 +258,44 @@ $(function(){
 	// Multi- section/parameter code {{{
 
 	/**
-	 * Remove a section
+	 * Remove a section repetition.
 	 *
-	 * @param component the section's components / componentData entry
-	 * @param repeatIndex
+	 * @param instance the section's instance
+	 * @param repeatIndex the repetition number to remove
 	 */
-	function removeSection(component, repeatIndex){
+	function removeSectionRepetition(instance, repeatIndex){
 		// TODO
 	}
 
 	/**
-	 * Remove a parameter value
+	 * Remove a parameter value.
 	 *
-	 * @param component the parameter's components / componentData entry
-	 * @param repeatIndex
+	 * @param instance the parameter's instance
+	 * @param repeatIndex the repetition number to remove
 	 */
-	function removeParameterValue(component, repeatIndex){
+	function removeParameterRepetition(instance, repeatIndex){
 		// TODO
 	}
 
 	/**
-	 * Add a section (called when a plus button is pressed in a section header)
+	 * Add a section repetition.
 	 *
-	 * @param container a "row" class div
-	 * @param component the section's components / componentData entry
-	 * @param repeatIndex
+	 * @param instance the section's instance
+	 * @param repeatIndex the repetition after which a repetition will be inserted (-1 if it's a dummy)
 	 */
-	function addSection(container, component, repeatIndex){
+	function addSectionRepetition(instance, repeatIndex){
 		// TODO: Create section
-		// TODO: Attach event handlers
 	}
 
 	/**
-	 * Add a parameter value (called when a plus button is pressed in a
-	 * parameter row).
+	 * Add a parameter value.
 	 *
-	 * @param container a "value" class div
-	 * @param component the parameter's components / componentData entry
-	 * @param repeatIndex
+	 * @param instance the parameter's instance
+	 * @param repeatIndex the repetition after which a repetition will be inserted (-1 if it's a dummy)
 	 */
-	function addParameterValue(container, component, repeatIndex){
+	function addParameterRepetition(instance, repeatIndex){
 		// TODO: Create parameter
-		// TODO: Attach event handlers
+		//var 
 	}
 
 	// }}}
@@ -326,7 +322,15 @@ $(function(){
 	 */
 	function onMinusButton(e){
 		var buttonSet = $(this).parent('.buttonset');
-		removeParameterValue
+
+		if(buttonSet.is('.section-buttons')){
+			removeSectionRepetition();
+		}else if(buttonSet.is('.parameter-buttons')){
+			removeParameterRepetition();
+		}
+
+		// TODO
+
 		// Stop click events from reaching the header and folding this section
 		e.preventDefault();
 		e.stopPropagation();
@@ -339,6 +343,13 @@ $(function(){
 	 */
 	function onPlusButton(e){
 		var buttonSet = $(this).parent('.buttonset');
+		if(buttonSet.is('.section-buttons')){
+			addSectionRepetition();
+		}else if(buttonSet.is('.parameter-buttons')){
+			addParameterRepetition();
+		}
+
+		// TODO
 
 		e.preventDefault();
 		e.stopPropagation();
@@ -418,7 +429,10 @@ $(function(){
 		if(instance.component.repeat){
 			if(repeatIndex === -1){
 				// Dummy instance
-				buttonSet += '(none - click to add)';
+				buttonSet +=
+					(instance.component.type === 'section')
+						? '(none - click to add)'
+						: '(none)';
 			}else{
 				buttonSet += (repeatIndex + 1) + ' / ' + instance.repetitionCount;
 			}
@@ -506,7 +520,7 @@ $(function(){
 	 * @return a value element
 	 */
 	function makeValue(instance, repeatIndex){
-		var value = '<div class="value table"><div class="table-row">';
+		var value = '<div class="value table-row">';
 
 		var name = instance.component.name;
 		/**
@@ -525,52 +539,54 @@ $(function(){
 
 		if(repeatIndex === -1){
 			var input = '<input type="text" class="table-cell dummy invisible" disabled />';
-		}else if(instance.component.datatype === 'choice' && instance.component.options.length > 999){
-			// Special case for radio buttons
-			// TODO
-			var input = '<div class="checkgroup table-cell" id="' + id + '" data-default="' + pfilter(instance.component.default) + '">';
-
-			// List all the options
-			optLen = instance.component.options.length;
-			for(var i=0; i<optLen; i++){
-				var checkbox = '<input type="radio" class="parameter" id="' + id + '_' + i + '" '
-					+ 'name="' + pfilter(name) + '"' + (instance.component.default === instance.component.options[i] ? ' checked' : '')
-					+ ' />';
-
-				var label = '<label for="' + id + '_' + i + '">' + pfilter(instance.component.options[i]) + '</label>';
-				input += label;
-			}
 		}else{
-			var idNameDefaultAttrs = 'id="' + id + '" name="' + pfilter(name) + '" '
-				+ 'data-default="' + pfilter(instance.component.default) + '"';
+			if(instance.component.datatype === 'choice' && instance.component.options.length > 999){
+				// Special case for radio buttons
+				// TODO
+				var input = '<div class="checkgroup table-cell" id="' + id + '" data-default="' + pfilter(instance.component.default) + '">';
 
-			if(instance.component.datatype === 'choice'){
-				var input = '<select class="parameter table-cell" '
-					+ idNameDefaultAttrs + '>';
-				// Select options
-				for(var i=0; i<instance.component.options.length; i++){
-					input += '<option value="' + pfilter(instance.component.options[i]) + '"'
-						+ (instance.component.default === instance.component.options[i] ? ' selected' : '') + '>'
-						+ pfilter(instance.component.options[i]);
+				// List all the options
+				optLen = instance.component.options.length;
+				for(var i=0; i<optLen; i++){
+					var checkbox = '<input type="radio" class="parameter" id="' + id + '_' + i + '" '
+						+ 'name="' + pfilter(name) + '"' + (instance.component.default === instance.component.options[i] ? ' checked' : '')
+						+ ' />';
+
+					var label = '<label for="' + id + '_' + i + '">' + pfilter(instance.component.options[i]) + '</label>';
+					input += label;
 				}
-				input += '</select>';
-			}else if(instance.component.datatype === 'string'){
-				var input = '<input type="text" ' + idNameDefaultAttrs + ' value="' + pfilter(instance.component.default) + '" />';
-			}else if(instance.component.datatype === 'integer'){
-				var input = '<input type="text" pattern="\d*" ' + idNameDefaultAttrs + ' value="' + pfilter(instance.component.default) + '" />';
-			}else if(instance.component.datatype === 'float'){
-				var input = '<input type="text" pattern="\d*(\.\d+)?" ' + idNameDefaultAttrs + ' value="' + pfilter(instance.component.default) + '" />';
-			}else if(instance.component.datatype === 'file'){
-				var input = '<input type="file" ' + idNameDefaultAttrs + ' />';
 			}else{
-				alert('Error: Unknown datatype "' + instance.component.datatype + '"');
-				return;
+				var idNameDefaultAttrs = 'id="' + id + '" name="' + pfilter(name) + '" '
+					+ 'data-default="' + pfilter(instance.component.default) + '"';
+
+				if(instance.component.datatype === 'choice'){
+					var input = '<select class="parameter table-cell" '
+						+ idNameDefaultAttrs + '>';
+					// Select options
+					for(var i=0; i<instance.component.options.length; i++){
+						input += '<option value="' + pfilter(instance.component.options[i]) + '"'
+							+ (instance.component.default === instance.component.options[i] ? ' selected' : '') + '>'
+							+ pfilter(instance.component.options[i]);
+					}
+					input += '</select>';
+				}else if(instance.component.datatype === 'string'){
+					var input = '<input type="text" ' + idNameDefaultAttrs + ' value="' + pfilter(instance.component.default) + '" />';
+				}else if(instance.component.datatype === 'integer'){
+					var input = '<input type="text" pattern="\d*" ' + idNameDefaultAttrs + ' value="' + pfilter(instance.component.default) + '" />';
+				}else if(instance.component.datatype === 'float'){
+					var input = '<input type="text" pattern="\d*(\.\d+)?" ' + idNameDefaultAttrs + ' value="' + pfilter(instance.component.default) + '" />';
+				}else if(instance.component.datatype === 'file'){
+					var input = '<input type="file" ' + idNameDefaultAttrs + ' />';
+				}else{
+					alert('Error: Unknown datatype "' + instance.component.datatype + '"');
+					return;
+				}
 			}
 		}
 
 		value += input;
-		value += makeButtonSet(instance);
-		value += '</div></div>';
+		value += makeButtonSet(instance, repeatIndex);
+		value += '</div>';
 
 		return value;
 	}
@@ -593,15 +609,20 @@ $(function(){
 				? replaceRepetitionPlaceholders(instance.component.name, instance, 0)
 				: replaceRepetitionPlaceholders(instance.component.label, instance, 0)) + '</label>';
 
+		var values = '<div class="values table">';
+
 		if(instance.component.repeat && instance.component.repeat_min == 0){
 			// Minimum amount of values is zero, do not render an input
-			var value = makeValue(instance, -1);
+			values += makeValue(instance, -1);
 		}else{
-			// TODO: Do something about repetitions here
-			var value = makeValue(instance, 0);
+			for(var i=0; i<(instance.component.repeat ? instance.component.repeat_min : 1); i++){
+				values += makeValue(instance, i);
+			}
 		}
 
-		return { 'label': label, 'value': value };
+		values += '</div>';
+
+		return { 'label': label, 'values': values };
 	}
 
 	/**
@@ -742,7 +763,7 @@ $(function(){
 			}else{
 				if(component.type === 'parameter'){
 					var parameter = makeParameter(instance);
-					html += parameter.label + parameter.value;
+					html += parameter.label + parameter.values;
 				}else if(component.type === 'paragraph'){
 					html += makeParagraph(instance);
 				}else{
@@ -816,7 +837,7 @@ $(function(){
 			},
 			function(callback){
 				// Fold all sections
-				$('#haddockform section').each(function(){ toggleSection(this, true); });
+				//$('#haddockform section').each(function(){ toggleSection(this, true); });
 				// Set form level
 				setLevel(formLevel, true);
 				// Show the form

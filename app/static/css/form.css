@@ -199,27 +199,17 @@ form.haddock .row > label {
 	float:   left;
 	width: 40%;
 	line-height:  25px;
-	border-right: 1px solid #ddd;
 }
 
-form.haddock .row > .value {
+form.haddock .row > .values {
 	padding-left: 5px;
+	border-left: 1px solid #ddd;
 }
 
-form.haddock .row > .value input,
-form.haddock .row > .value select,
-form.haddock .row > .value .select2 {
+form.haddock .row > .values input,
+form.haddock .row > .values select {
 	margin-top: 1px;
 	margin-bottom: 1px;
-}
-
-form.haddock .row > input,
-form.haddock .row > select,
-form.haddock .row > .select2 {
-	margin-top: 1px;
-	margin-bottom: 1px;
-	display: block;
-	float:   left;
 }
 
 /*   }}} */
