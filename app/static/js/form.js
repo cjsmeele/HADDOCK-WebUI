@@ -965,10 +965,10 @@ $(function(){
 	 * @see deflateInstances()
 	 */
 	function inflateInstances(componentInstances, rootInstances, callback){
+		var inflatedComponentInstances = [];
+
 		async.series([
 			function(stepCallback){
-				var inflatedComponentInstances = [];
-
 				async.eachSeries(componentInstances, function(instance, instanceCallback){
 					var inflated = { };
 					for(var key in instance){
@@ -1113,7 +1113,7 @@ $(function(){
 
 			console.log('inflating components instances');
 			// XXX 20140807
-			inflateInstances(componentInstances, rootInstances, function(
+			inflateInstances(savedInstances, savedRootInstances, function(
 					inflatedComponentInstances, inflatedRootInstances){
 				componentInstances = inflatedComponentInstances;
 				rootInstances      = inflatedComponentInstances;
