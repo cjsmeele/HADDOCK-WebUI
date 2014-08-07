@@ -447,8 +447,11 @@ $(function(){
 			+ 'class="minus fa fa-fw fa-minus invisible"></i>';
 		buttonSet += '<i title="Add a ' + (instance.component.type === 'section' ? 'block' : 'value') + '" '
 			+ 'class="plus fa fa-fw fa-plus'
-			+ (!instance.component.repeat || (instance.component.repeat_max !== null &&
-					instance.repetitionCount >= instance.component.repeat_max)
+			+ (!instance.component.repeat
+				// Remove the line below if you decide to support adding / removing
+				// repetitions that are not the last in their instances repetitions array.
+				|| (repeatIndex < instance.repetitionCount - 1)
+				|| (instance.component.repeat_max !== null && instance.repetitionCount >= instance.component.repeat_max)
 				? ' invisible' : '')
 			+ '"></i>';
 
