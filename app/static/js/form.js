@@ -344,7 +344,12 @@ $(function(){
 	function onPlusButton(e){
 		var buttonSet = $(this).parent('.buttonset');
 		if(buttonSet.is('.section-buttons')){
-			addSectionRepetition();
+			var instance    = componentInstances[buttonSet.data('global-instance-index')];
+			var repeatIndex = buttonSet.data('repetition');
+			console.log(instance.component.label);
+			console.log(buttonSet.data('global-instance-index'));
+			console.log(repeatIndex);
+			addSectionRepetition(instance, repeatIndex);
 		}else if(buttonSet.is('.parameter-buttons')){
 			addParameterRepetition();
 		}
@@ -422,9 +427,9 @@ $(function(){
 
 		var buttonSet = '<div class="buttonset ' + instance.component.type + '-buttons'
 			+ (instance.component.type === 'parameter' ? ' table-cell shrink' : ' float-right') + '"'
-			+ ' data-data-index="'     + instance.component.dataIndex + '"'
-			+ ' data-instance-index="' + instance.globalIndex         + '"'
-			+ ' data-repetition="'     + repeatIndex                  + '">';
+			+ ' data-data-index="'            + instance.component.dataIndex + '"'
+			+ ' data-global-instance-index="' + instance.globalIndex         + '"'
+			+ ' data-repetition="'            + repeatIndex                  + '">';
 
 		if(instance.component.repeat){
 			if(repeatIndex === -1){
@@ -441,6 +446,13 @@ $(function(){
 		if(instance.component.type === 'parameter'){
 			buttonSet += '<i title="Reset to default value (' + instance.component.default
 				+ ')" class="reset fa fa-fw fa-undo invisible"></i>';
+		}else if(instance.component.type === 'section' && instance.component.repeat){
+			/*
+			buttonSet += '<i title="Scroll towards the previous block of this type" class="next fa fa-fw fa-lg fa-caret-up'
+				+ '"></i>';
+			buttonSet += '<i title="Scroll towards the next block of this type" class="next fa fa-fw fa-lg fa-caret-down'
+				+ '"></i>';
+			*/
 		}
 
 		buttonSet += '<i title="Remove this ' + (instance.component.type === 'section' ? 'block' : 'value') + '" '
@@ -508,9 +520,9 @@ $(function(){
 
 			repetitions.push(repetition);
 
-			async.nextTick(timesCallback);
+			timesCallback();
 		}, function(){
-			async.nextTick(function(){ callback(repetitions); });
+			callback(repetitions);
 		});
 	}
 
@@ -652,9 +664,9 @@ $(function(){
 	 * @param callback
 	 */
 	function prepareComponents(components, callback, weight){
-		async.each(components, function(component, componentCallback){
+		async.eachSeries(components, function(component, componentCallback){
 			if('hidden' in component && component.hidden){
-				async.nextTick(componentCallback);
+				componentCallback();
 				return;
 			}
 
@@ -666,18 +678,14 @@ $(function(){
 
 			var dataIndex       = componentData.push(component) - 1;
 			component.dataIndex = dataIndex;
-			component.instances = [];
 
 			if(component.type === 'section'){
-				prepareComponents(component.children, function(){
-					async.nextTick(componentCallback);
-				}, (component.repeat ? weight * component.repeat_min : weight));
+				prepareComponents(component.children, componentCallback,
+					(component.repeat ? weight * component.repeat_min : weight));
 			}else{
-				async.nextTick(componentCallback);
+				componentCallback();
 			}
-		}, function(){
-			async.nextTick(callback);
-		});
+		}, callback);
 	}
 
 	/**
@@ -692,7 +700,7 @@ $(function(){
 
 		async.eachSeries(components, function(component, componentCallback){
 			if('hidden' in component && component.hidden){
-				async.nextTick(componentCallback);
+				componentCallback();
 				return;
 			}
 
@@ -705,8 +713,7 @@ $(function(){
 				hasDummy:         false
 			};
 
-			instance.globalIndex = componentInstances.push(instance);
-			instance.localIndex  = component.instances.push(instance);
+			instance.globalIndex = componentInstances.push(instance) - 1;
 
 			if(isRootComponent){
 				rootInstances.push(instance);
@@ -740,7 +747,7 @@ $(function(){
 						setProgress(instancesRendered / componentInstanceCount);
 						$('#items-loaded').html(instancesRendered);
 					}
-					async.nextTick(componentCallback);
+					componentCallback();
 				}else{
 					makeSection(instance, function(repetitions){
 						instance.repetitions = repetitions;
@@ -749,7 +756,7 @@ $(function(){
 							renderComponents(component.children, function(repetitionHTML){
 								html += repetitionHTML;
 								html += repetitions[i].html.end;
-								async.nextTick(timesCallback);
+								timesCallback();
 							}, instance, i);
 						}, function(){
 							html += '</div>';
@@ -759,6 +766,13 @@ $(function(){
 								setProgress(instancesRendered / componentInstanceCount);
 								$('#items-loaded').html(instancesRendered);
 							}
+
+							// To prevent hanging browsers on slow devices.
+							// Give the browser some time to respond to user
+							// input and redraw the window.
+
+							// Only do this for sections, not other parameters,
+							// since it can be quite a performance hit.
 							async.nextTick(componentCallback);
 						});
 					});
@@ -779,10 +793,10 @@ $(function(){
 					setProgress(instancesRendered / componentInstanceCount);
 					$('#items-loaded').html(instancesRendered);
 				}
-				async.nextTick(componentCallback);
+				componentCallback();
 			}
 		}, function(){
-			async.nextTick(function(){ callback(html); });
+			callback(html);
 		});
 	}
 
@@ -836,7 +850,7 @@ $(function(){
 					setLevel($(this).data('name'));
 				});
 
-				async.nextTick(callback);
+				callback();
 			},
 			function(callback){
 				// Fold all sections
@@ -868,7 +882,7 @@ $(function(){
 			function(stepCallback){
 				prepareComponents(components, function(){
 					$('#items-total').html(componentInstanceCount);
-					async.nextTick(stepCallback);
+					stepCallback();
 				});
 			},
 			function(stepCallback){
@@ -877,59 +891,239 @@ $(function(){
 				$('#form-progress, .progress-container').removeClass('hidden');
 				renderComponents(components, function(renderedHTML){
 					html = renderedHTML;
-					async.nextTick(stepCallback);
+					stepCallback();
 				});
 			},
 			function(stepCallback){
 				$('#progress-activity').html('Rendering');
-				var progressbar = $('#progressbar');
-				progressbar.css('width', '');
-				progressbar.addClass('indeterminate');
+				//var progressbar = $('#progressbar');
+				//progressbar.css('width', '');
+				//progressbar.addClass('indeterminate');
 				$('#form-progress').addClass('hidden');
-				async.nextTick(stepCallback);
+				stepCallback();
 			},
 		], function(err){
 			$('html').css('cursor', '');
-			async.nextTick(function(){ callback(html); });
+			callback(html);
 		});
 	}
 
-	function storeForm(html){
-		simpleStorage.deleteKey('haddock_form_version');
-		simpleStorage.deleteKey('haddock_form');
+	/**
+	 * TODO
+	 */
+	function deflateInstances(componentInstances, rootInstances, callback){
+		async.series([
+			function(stepCallback){
+				var deflatedComponentInstances = [];
 
-		console.log('storing form version: ' + modelVersionTag);
-		simpleStorage.set('haddock_form_version', modelVersionTag);
-		simpleStorage.set('haddock_form', html);
+				async.eachSeries(componentInstances, function(instance, instanceCallback){
+					var deflated = { };
+					for(var key in instance){
+						if(key === 'component'){
+							deflated.componentIndex = instance.component.dataIndex;
+						}else if(key === 'parentInstance'){
+							deflated.parentInstanceIndex = (instance.parentInstance === null)
+								? null : instance.parentInstance.globalIndex;
+						}else if(key === 'repetitions'){
+							// TODO
+							deflated.repetitions         = [];
+						}else if(instance[key] === null){
+							// 'null' is an object in JS. We need a special check for it.
+							deflated.key = instance[key];
+						}else if(typeof(instance[key]) === 'object'){
+							// This catches arrays as well
+							console.log('WARNING: Dropping instance property "' + key
+								+ '" because it is not a scalar value (' + typeof(instance[key]) + ')');
+						}else{
+							deflated.key = instance[key];
+						}
+					}
+
+					deflatedComponentInstances.push(deflated);
+					instanceCallback();
+				}, function(){
+					stepCallback(null, deflatedComponentInstances);
+				});
+			},
+			function(stepCallback){
+				var deflatedRootInstances = [];
+
+				async.eachSeries(rootInstances, function(instance, instanceCallback){
+					deflatedRootInstances.push(instance.globalIndex);
+					instanceCallback();
+				}, function(){
+					stepCallback(null, deflatedRootInstances);
+				});
+			},
+		], function(err, results){
+			callback(results[0], results[1]);
+		});
+	}
+
+	/**
+	 * Does the opposite of deflateInstances().
+	 * @see deflateInstances()
+	 */
+	function inflateInstances(componentInstances, rootInstances, callback){
+		async.series([
+			function(stepCallback){
+				var inflatedComponentInstances = [];
+
+				async.eachSeries(componentInstances, function(instance, instanceCallback){
+					var inflated = { };
+					for(var key in instance){
+						if(key === 'componentIndex'){
+							inflated.component = componentData[instance.componentIndex];
+						}else if(key === 'parentInstance'){
+							// The parent instance must be inflated already.
+							inflated.parentInstance = (instance.parentInstanceIndex === null)
+								? null : inflatedComponentInstances[instance.parentInstanceIndex];
+						}else if(key === 'repetitions'){
+							// TODO
+							inflated.repetitions = [];
+						}else{
+							inflated.key = instance[key];
+						}
+					}
+
+					inflatedComponentInstances.push(inflated);
+					instanceCallback();
+				}, function(){
+					stepCallback(null, inflatedComponentInstances);
+				});
+			},
+			function(stepCallback){
+				// TODO: Check whether we really need rootInstances after form generation.
+				var inflatedRootInstances = [];
+
+				async.eachSeries(rootInstances, function(instanceIndex, instanceCallback){
+					inflatedRootInstances.push(inflatedComponentInstances[instanceIndex]);
+					instanceCallback();
+				}, function(){
+					stepCallback(null, inflatedRootInstances);
+				});
+			},
+		], function(err, results){
+			callback(results[0], results[1]);
+		});
+	}
+
+	/**
+	 * Store all serializable information of this form, necessary for rebuilding
+	 * it, in localStorage.
+	 *
+	 * Copies of the instances arrays will be modified to change them from a
+	 * cyclic graph into a normal tree, to allow for JSON serialization.
+	 * @see deflateInstances()
+	 *
+	 * @param html the generated form HTML
+	 * @param componentData
+	 * @param componentInstances
+	 * @param rootInstances
+	 */
+	function storeForm(html, componentData, componentInstances, rootInstances, callback){
+		localStorage.removeItem('haddock_form_version');
+		localStorage.removeItem('haddock_form');
+		localStorage.removeItem('haddock_form_components');
+		localStorage.removeItem('haddock_form_instances');
+		localStorage.removeItem('haddock_form_root_instances');
+
+
+		localStorage.setItem('haddock_form', html);
+
+		console.log('deflating components and instances for serialization');
+		deflateInstances(componentInstances, rootInstances, function(
+				deflatedComponentInstances, deflatedRootInstances){
+			localStorage.setItem('haddock_form_components', JSON.stringify(componentData));
+			localStorage.setItem('haddock_form_instances',  JSON.stringify(deflatedComponentInstances));
+			localStorage.setItem('haddock_form_root_instances', JSON.stringify(deflatedRootInstances));
+			localStorage.setItem('haddock_form_version',        modelVersionTag);
+			console.log('stored new form version: ' + modelVersionTag);
+			callback();
+		});
 	}
 
 	/**
 	 * Load the HADDOCK form.
 	 *
-	 * This will load the HTML for the form either by using the localStorage
-	 * cache or by generating it on page load using buildForm().
+	 * This will load the HTML and component instance data for the form either
+	 * by using the localStorage cache or by generating it on page load using buildForm().
 	 *
 	 * @param forceRenew when true, no attempt is made to load the form from cache
 	 */
 	function loadForm(forceRenew){
-		var storedVersion = simpleStorage.get('haddock_form_version');
-		if(typeof(forceRenew) !== 'undefined' && forceRenew){
-			console.log('force-refreshing form, dropping html cache');
-		}else if(storedVersion === modelVersionTag){
-			console.log('stored form html version ' + storedVersion + ' is up to date');
-			var form = simpleStorage.get('haddock_form');
-		}else if(typeof(storedVersion) !== 'undefined'
-				&& storedVersion !== null
-				&& storedVersion !== false
-				&& storedVersion.length){
-			// If only there were a cross-browser method of checking whether a localStorage key exists
-			console.log('stored form html version ' + storedVersion + ' is out of date, generating new version '
-				+ modelVersionTag);
-		}else{
-			console.log('no valid form cache found, generating new form version ' + modelVersionTag);
+		/**
+		 * Convert a JSON string to an object with validation.
+		 */
+		function parseJSON(jsonData){
+			if(typeof(jsonData) === 'undefined'
+					|| jsonData === null
+					|| jsonData === false
+					|| !jsonData.length){
+				return null;
+			}
+			try{
+				var obj = JSON.parse(jsonData);
+				return (typeof(obj) === 'object') ? obj : null;
+			}catch(e){
+				return null;
+			}
 		}
 
-		if(typeof(form) === 'undefined' || form === null || form === false || !form.length){
+		var storedVersion = localStorage.getItem('haddock_form_version');
+		if(typeof(forceRenew) !== 'undefined' && forceRenew){
+			console.log('force-refreshing form, dropping html cache');
+		}else if(typeof(storedVersion) === 'undefined'
+				|| storedVersion === null
+				|| storedVersion === false
+				|| !storedVersion.length){
+			// If only there were a cross-browser method of checking whether a localStorage key exists
+			console.log('no form cache found, generating new form version ' + modelVersionTag);
+		}else{
+			// We seem to have saved form data, check if it's up to date and valid
+			if(storedVersion === modelVersionTag){
+				var savedForm          = localStorage.getItem('haddock_form');
+				var savedComponentData = parseJSON(localStorage.getItem('haddock_form_components'));
+				var savedInstances     = parseJSON(localStorage.getItem('haddock_form_instances'));
+				var savedRootInstances = parseJSON(localStorage.getItem('haddock_form_root_instances'));
+
+				if(typeof(savedForm) !== 'string' || !savedForm.length
+						|| savedComponentData === null || savedInstances === null || savedRootInstances === null){
+					console.log('stored form html version ' + storedVersion + ' is incomplete, regenerating form');
+					savedForm = null;
+				}else{
+					console.log('stored form html version ' + storedVersion + ' is up to date');
+				}
+			}else{
+				console.log('stored form html version ' + storedVersion + ' is out of date, generating new version '
+					+ modelVersionTag);
+			}
+		}
+
+		// Did we successfully load an up to date form from cache?
+		if(typeof(savedForm) === 'string' && savedForm.length){
+			// Yes, unserialize saved instance arrays
+			$('#haddockform > .content').html(savedForm);
+			// Now the browser should be busy parsing the HTML.
+			// (or it is hanging the thread on the call above)
+			// Either way, continue by inflating those arrays.
+
+			// Component data is acyclic
+			componentData = savedComponentData;
+
+			console.log('inflating components instances');
+			// XXX 20140807
+			inflateInstances(componentInstances, rootInstances, function(
+					inflatedComponentInstances, inflatedRootInstances){
+				componentInstances = inflatedComponentInstances;
+				rootInstances      = inflatedComponentInstances;
+
+				console.log('successfully loaded form version ' + modelVersionTag);
+				// We should now have the form and all required JS objects loaded.
+				finalizeForm();
+			});
+		}else{
+			// No, generate a new form and store it in cache
 			async.waterfall([
 				function(callback){
 					buildForm(formComponents, function(result){ callback(null, result); });
@@ -939,13 +1133,12 @@ $(function(){
 					//       difference is barely noticable in FF, Chrome and Safari.
 					//       Also, cross-browser compatibility would not be guaranteed.
 					$('#haddockform > .content').html(result);
-					storeForm(result);
-					finalizeForm();
+					storeForm(result, componentData, componentInstances, rootInstances, function(){
+						// componentInstances should not be modified before it is saved
+						finalizeForm();
+					});
 				}
 			]);
-		}else{
-			$('#haddockform > .content').html(form);
-			finalizeForm();
 		}
 	}
 
