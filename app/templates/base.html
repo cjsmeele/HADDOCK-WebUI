@@ -1,19 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>{{ title }}</title>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+	<title>{{ title }}</title>
+
+	<!-- IE 8 does not support HTML5 elements out-of-the-box -->
 	<!--[if lt IE 9]>
 	<script src="{{ url_for('static', filename='lib/html5shiv.js') }}"></script>
 	<![endif]-->
+
+	<!-- Global styles and scripts -->
 	<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/main.css') }}" />
 	<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/atomic.css') }}" />
 	<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='lib/font-awesome/css/font-awesome.min.css') }}" />
 	<script type="text/javascript" src="{{ url_for('static', filename='lib/jquery.js') }}"></script>
 	<script type="text/javascript" src="{{ url_for('static', filename='lib/async.js') }}"></script>
-	<script type="text/javascript" src="{{ url_for('static', filename='lib/simplestorage.js') }}"></script>
 	<script type="text/javascript" src="{{ url_for('static', filename='js/main.js') }}"></script>
-	{% block page_includes -%}{% endblock -%}
+
+	<!-- Page-specific styles and scripts -->
+	{% block page_head -%}
+	<!-- (none) -->
+	{%- endblock %}
 </head>
 <body>
 {% block header -%}
