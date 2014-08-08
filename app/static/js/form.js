@@ -510,20 +510,16 @@ $(function(){
 	function makeSection(instance, callback){
 		var repetitions = [];
 
-		async.timesSeries(instance.component.repeat ? instance.component.repeat_min : 1, function(i, timesCallback){
+		for(var i=0; i<(instance.component.repeat ? instance.component.repeat_min : 1); i++){
 			var repetition = {
-				html: null,
+				html: makeSectionHTML(instance, i),
 				children: []
 			};
 
-			repetition.html = makeSectionHTML(instance, i);
-
 			repetitions.push(repetition);
+		}
 
-			timesCallback();
-		}, function(){
-			callback(repetitions);
-		});
+		return repetitions;
 	}
 
 	/**
@@ -535,7 +531,7 @@ $(function(){
 	 * @return a value element
 	 */
 	function makeValue(instance, repeatIndex){
-		var value = '<div class="value table-row">';
+		var valueHTML = '<div class="value table-row">';
 
 		var name = instance.component.name;
 		/**
@@ -571,12 +567,12 @@ $(function(){
 					input += label;
 				}
 			}else{
+				// This is reusable for all datatypes
 				var idNameDefaultAttrs = 'id="' + id + '" name="' + pfilter(name) + '" '
 					+ 'data-default="' + pfilter(instance.component.default) + '"';
 
 				if(instance.component.datatype === 'choice'){
-					var input = '<select class="parameter table-cell" '
-						+ idNameDefaultAttrs + '>';
+					var input = '<select class="parameter table-cell" ' + idNameDefaultAttrs + '>';
 					// Select options
 					for(var i=0; i<instance.component.options.length; i++){
 						input += '<option value="' + pfilter(instance.component.options[i]) + '"'
@@ -585,11 +581,14 @@ $(function(){
 					}
 					input += '</select>';
 				}else if(instance.component.datatype === 'string'){
-					var input = '<input type="text" ' + idNameDefaultAttrs + ' value="' + pfilter(instance.component.default) + '" />';
+					var input = '<input type="text" ' + idNameDefaultAttrs
+						+ ' value="' + pfilter(instance.component.default) + '" />';
 				}else if(instance.component.datatype === 'integer'){
-					var input = '<input type="text" pattern="\d*" ' + idNameDefaultAttrs + ' value="' + pfilter(instance.component.default) + '" />';
+					var input = '<input type="text" pattern="\d*" ' + idNameDefaultAttrs
+						+ ' value="' + pfilter(instance.component.default) + '" />';
 				}else if(instance.component.datatype === 'float'){
-					var input = '<input type="text" pattern="\d*(\.\d+)?" ' + idNameDefaultAttrs + ' value="' + pfilter(instance.component.default) + '" />';
+					var input = '<input type="text" pattern="\d*(\.\d+)?" ' + idNameDefaultAttrs
+						+ ' value="' + pfilter(instance.component.default) + '" />';
 				}else if(instance.component.datatype === 'file'){
 					var input = '<input type="file" ' + idNameDefaultAttrs + ' />';
 				}else{
@@ -599,19 +598,25 @@ $(function(){
 			}
 		}
 
-		value += input;
-		value += makeButtonSet(instance, repeatIndex);
-		value += '</div>';
+		valueHTML += input;
+		valueHTML += makeButtonSet(instance, repeatIndex);
+		valueHTML += '</div>';
 
-		return value;
+		return {
+			html:  valueHTML,
+			value: pfilter(instance.component.default)
+		};
 	}
 
 	/**
 	 * Create a labeled parameter.
 	 *
+	 * 'html' in the returned object is a HTML string containing all repetitions.
+	 * 'repetitions' is a list of parameter values.
+	 *
 	 * @param instance the parameter instance to build
 	 *
-	 * @return an object containing a label and a value div
+	 * @return { label: html, values: html, reptitions: [value, value, ...] }
 	 */
 	function makeParameter(instance){
 		var label = '<label for="f_'
@@ -624,20 +629,24 @@ $(function(){
 				? replaceRepetitionPlaceholders(instance.component.name, instance, 0)
 				: replaceRepetitionPlaceholders(instance.component.label, instance, 0)) + '</label>';
 
-		var values = '<div class="values table">';
+		var valuesHTML = '<div class="values table">';
+		var repetitions = [];
 
 		if(instance.component.repeat && instance.component.repeat_min == 0){
 			// Minimum amount of values is zero, do not render an input
-			values += makeValue(instance, -1);
+			var value = makeValue(instance, -1);
+			valuesHTML += value.html;
 		}else{
 			for(var i=0; i<(instance.component.repeat ? instance.component.repeat_min : 1); i++){
-				values += makeValue(instance, i);
+				var value   = makeValue(instance, i);
+				valuesHTML += value.html;
+				repetitions.push(value.value);
 			}
 		}
 
-		values += '</div>';
+		valuesHTML += '</div>';
 
-		return { 'label': label, 'values': values };
+		return { 'html': label + valuesHTML, 'repetitions': repetitions };
 	}
 
 	/**
@@ -718,7 +727,7 @@ $(function(){
 			if(isRootComponent){
 				rootInstances.push(instance);
 			}else{
-				parentInstance.repetitions[parentRepetition].children.push(instance);
+				parentInstance.repetitions[parentRepetition].push(instance);
 			}
 
 			html += '<div class="row';
@@ -731,8 +740,10 @@ $(function(){
 			html += '" data-data-index="'            + component.dataIndex;
 			html += '" data-global-instance-index="' + instance.globalIndex + '">';
 
-			instance.repetitions     = [];
-			instance.repetitionCount = component.repeat_min;
+			if(component.type === 'section' || component.type === 'parameter'){
+				instance.repetitions     = [];
+				instance.repetitionCount = component.repeat_min;
+			}
 
 			if(component.type === 'section'){
 				if(component.repeat && component.repeat_min == 0){
@@ -749,38 +760,39 @@ $(function(){
 					}
 					componentCallback();
 				}else{
-					makeSection(instance, function(repetitions){
-						instance.repetitions = repetitions;
-						async.timesSeries(instance.repetitions.length, function(i, timesCallback){
-							html += repetitions[i].html.start;
-							renderComponents(component.children, function(repetitionHTML){
-								html += repetitionHTML;
-								html += repetitions[i].html.end;
-								timesCallback();
-							}, instance, i);
-						}, function(){
-							html += '</div>';
+					var repetitions = makeSection(instance);
+					async.timesSeries(repetitions.length, function(i, timesCallback){
+						instance.repetitions.push(repetitions[i].children);
+						html += repetitions[i].html.start;
 
-							instancesRendered++;
-							if(!(instancesRendered & 0x0f) || instancesRendered === componentInstanceCount){
-								setProgress(instancesRendered / componentInstanceCount);
-								$('#items-loaded').html(instancesRendered);
-							}
+						renderComponents(component.children, function(repetitionHTML){
+							html += repetitionHTML;
+							html += repetitions[i].html.end;
+							timesCallback();
+						}, instance, i);
+					}, function(){
+						html += '</div>';
 
-							// To prevent hanging browsers on slow devices.
-							// Give the browser some time to respond to user
-							// input and redraw the window.
+						instancesRendered++;
+						if(!(instancesRendered & 0x0f) || instancesRendered === componentInstanceCount){
+							setProgress(instancesRendered / componentInstanceCount);
+							$('#items-loaded').html(instancesRendered);
+						}
 
-							// Only do this for sections, not other parameters,
-							// since it can be quite a performance hit.
-							async.nextTick(componentCallback);
-						});
+						// To prevent hanging browsers on slow devices.
+						// Give the browser some time to respond to user
+						// input and redraw the window.
+
+						// Only do this for sections, not other components,
+						// since it can be quite a performance hit.
+						async.nextTick(componentCallback);
 					});
 				}
 			}else{
 				if(component.type === 'parameter'){
 					var parameter = makeParameter(instance);
-					html += parameter.label + parameter.values;
+					html += parameter.html;
+					instance.repetitions = parameter.repetitions;
 				}else if(component.type === 'paragraph'){
 					html += makeParagraph(instance);
 				}else{
@@ -909,7 +921,12 @@ $(function(){
 	}
 
 	/**
-	 * TODO
+	 * Replace references to other objects in instances arrays with index numbers.
+	 * Used to allow for JSON serialization.
+	 *
+	 * @param componentInstances
+	 * @param rootInstances
+	 * @param callback called with (deflatedComponentInstances, deflatedRootInstances)
 	 */
 	function deflateInstances(componentInstances, rootInstances, callback){
 		async.series([
@@ -918,24 +935,46 @@ $(function(){
 
 				async.eachSeries(componentInstances, function(instance, instanceCallback){
 					var deflated = { };
+					// Loop through instance properties and do conversions when necessary.
+						console.log(instance);
 					for(var key in instance){
 						if(key === 'component'){
+							// Save the component index number instead of the component object itself.
 							deflated.componentIndex = instance.component.dataIndex;
 						}else if(key === 'parentInstance'){
+							// Save the parent instance index number instead of the instance object itself.
 							deflated.parentInstanceIndex = (instance.parentInstance === null)
 								? null : instance.parentInstance.globalIndex;
 						}else if(key === 'repetitions'){
-							// TODO
-							deflated.repetitions         = [];
+							if(instance.component.type === 'section'){
+								// For sections, we need to convert the children property of each repetition.
+								deflated.repetitions = [];
+								for(var i=0; i<instance.repetitions.length; i++){
+									var children = [];
+									for(var j=0; j<instance.repetitions[i].length; j++){
+										// Save the child instance number instead of the instance itself.
+										children.push(instance.repetitions[i][j].globalIndex);
+									}
+									deflated.repetitions.push(children);
+								}
+							}else if(instance.component.type === 'parameter'){
+								// Simply create a copy of the parameter's repetitions array.
+								// It only contains values.
+								deflated.repetitions = instance.repetitions.slice(0);
+							}else{
+								// Other component types can't repeat.
+								console.log('WARNING: Dropping instance property "' + key
+									+ '" because repetition is not supported for component type "' + instance.component.type + '"');
+							}
 						}else if(instance[key] === null){
 							// 'null' is an object in JS. We need a special check for it.
-							deflated.key = instance[key];
+							deflated[key] = instance[key];
 						}else if(typeof(instance[key]) === 'object'){
 							// This catches arrays as well
 							console.log('WARNING: Dropping instance property "' + key
 								+ '" because it is not a scalar value (' + typeof(instance[key]) + ')');
 						}else{
-							deflated.key = instance[key];
+							deflated[key] = instance[key];
 						}
 					}
 
@@ -963,6 +1002,10 @@ $(function(){
 	/**
 	 * Does the opposite of deflateInstances().
 	 * @see deflateInstances()
+	 *
+	 * @param componentInstances
+	 * @param rootInstances
+	 * @param callback called with (inflatedComponentInstances, inflatedRootInstances)
 	 */
 	function inflateInstances(componentInstances, rootInstances, callback){
 		var inflatedComponentInstances = [];
@@ -971,19 +1014,44 @@ $(function(){
 			function(stepCallback){
 				async.eachSeries(componentInstances, function(instance, instanceCallback){
 					var inflated = { };
+					// Loop through deflated instance properties and do conversions when necessary.
 					for(var key in instance){
 						if(key === 'componentIndex'){
 							inflated.component = componentData[instance.componentIndex];
-						}else if(key === 'parentInstance'){
+						}else if(key === 'parentInstanceIndex'){
 							// The parent instance must be inflated already.
 							inflated.parentInstance = (instance.parentInstanceIndex === null)
 								? null : inflatedComponentInstances[instance.parentInstanceIndex];
 						}else if(key === 'repetitions'){
-							// TODO
-							inflated.repetitions = [];
+							// Don't refer to inflated.component here, as we can't be sure
+							// it has already been inflated.
+							if(componentData[instance.componentIndex].type === 'section'){
+								inflated.repetitions = [];
+								for(var i=0; i<instance.repetitions.length; i++){
+									var children = [];
+									// The child instance objects need to be inserted
+									// into its parent's children array by the children themselves,
+									// since the children haven't yet been inflated at this point.
+									inflated.repetitions.push([]);
+								}
+							}else if(componentData[instance.componentIndex].type === 'parameter'){
+								// Simply create a copy of the parameter's repetitions array.
+								// It only contains values.
+								inflated.repetitions = instance.repetitions.slice(0);
+							}else{
+								console.log('WARNING: Dropping deflated instance property "' + key
+									+ '" because repetition is not supported for component type "'
+									+ componentData[instance.componentIndex].type + '"');
+							}
 						}else{
-							inflated.key = instance[key];
+							inflated[key] = instance[key];
 						}
+					}
+
+					if(inflated.parentInstance !== null && inflated.parentRepetition !== null){
+						// We had to skip inflation of repetition children entries (see above),
+						// so do it now.
+						inflated.parentInstance.repetitions[inflated.parentRepetition].push(inflated);
 					}
 
 					inflatedComponentInstances.push(inflated);
@@ -1112,7 +1180,6 @@ $(function(){
 			componentData = savedComponentData;
 
 			console.log('inflating components instances');
-			// XXX 20140807
 			inflateInstances(savedInstances, savedRootInstances, function(
 					inflatedComponentInstances, inflatedRootInstances){
 				componentInstances = inflatedComponentInstances;
