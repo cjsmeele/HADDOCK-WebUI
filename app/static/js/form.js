@@ -240,7 +240,7 @@ $(function(){
 	 * @param input the element to reset
 	 */
 	function resetInput(input){
-		var buttonSet = $('.buttonset[data-for="'+ $(input).attr('id') +'"]');
+		var buttonSet = $(input).parent('.value').find('.buttonset');
 		input.val(input.attr('data-default'));
 
 		if(input.is('input[type="text"]')){
@@ -248,8 +248,10 @@ $(function(){
 		}else if(input.is('select')){
 			input.val(input.attr('data-default'));
 		}else if(input.is('.checkgroup')){
+			// TODO: Checkboxes are currently not supported
+
 			// Now let's just hope the default value doesn't contain double quotes...
-			input.find('input[type="radio"][value="' + input.attr('data-default') + '"]').prop('checked', true);
+			//input.find('input[type="radio"][value="' + input.attr('data-default') + '"]').prop('checked', true);
 		}
 
 		$(buttonSet).find('i.reset').addClass('invisible');
@@ -272,7 +274,7 @@ $(function(){
 	 * @param instance the parameter's instance
 	 */
 	function removeParameterRepetition(instance){
-		var valueTable  =
+		var valueTable =
 			$('#haddockform .row[data-global-instance-index="' + instance.globalIndex + '"]')
 				.find('.values.table');
 
@@ -351,7 +353,7 @@ $(function(){
 	 */
 	function onResetButton(e){
 		var buttonSet = $(this).parent('.buttonset');
-		var input = $('#'+buttonSet.data('for'));
+		var input = buttonSet.parent('.value').find('input, select');
 		resetInput(input);
 
 		e.preventDefault();
@@ -484,7 +486,8 @@ $(function(){
 		}
 
 		if(instance.component.type === 'parameter'){
-			buttonSet += '<i title="Reset to default value (' + instance.component.default
+			buttonSet += '<i title="Reset to default value ('
+				+ replaceRepetitionPlaceholders(instance.component.default, instance, repeatIndex)
 				+ ')" class="reset fa fa-fw fa-undo invisible"></i>';
 		}else if(instance.component.type === 'section' && instance.component.repeat){
 			/*
@@ -530,7 +533,7 @@ $(function(){
 	function makeSectionHTML(instance, repeatIndex){
 		var sectionStart =
 			  '<section' + (repeatIndex === -1 ? ' class="dummy"' : '')
-			+ (repeatIndex !== -1 ? ' data-repeat-index="' + repeatIndex + '"' : '')
+			+ (repeatIndex !== -1 ? ' data-repetition="' + repeatIndex + '"' : '')
 			+ '>'
 			+ '<header>'
 			+ '<i class="togglebutton fa fa-fw fa-lg fa-angle-double-down"></i>'
@@ -578,10 +581,13 @@ $(function(){
 	 * @return { html: html, value: <default_value> }
 	 */
 	function makeValue(instance, repeatIndex){
-		var valueHTML = '<div class="value table-row';
-		if(repeatIndex === -1)
-			valueHTML += ' dummy';
-		valueHTML += '">';
+		var valueHTML = '<div class="value table-row'
+			+ (repeatIndex === -1
+				? ' dummy' : '')
+			+ '"';
+		if(repeatIndex !== -1)
+			valueHTML += ' data-repetition="' + repeatIndex + '"';
+		valueHTML += '>';
 
 		var name = instance.component.name;
 		/**
@@ -895,17 +901,17 @@ $(function(){
 				});
 
 				$('#haddockform').on('change', 'input, select', function(e){
-					// FIXME: Doesn't work currently
 					formHasChanged = true;
 
 					if($(this).is('input[type="text"]') || $(this).is('select')){
-						var buttonSet = $('.buttonset[data-for="'+ $(this).attr('id') +'"]');
+						var buttonSet = $(this).parent('.value').find('.buttonset');
 						if($(this).val() == $(this).attr('data-default')){
 							buttonSet.find('.reset').addClass('invisible');
 						}else{
 							buttonSet.find('.reset').removeClass('invisible');
 						}
 					}else if($(this).is('.buttongroup')){
+						// TODO: Checkboxes are currently not supported
 						//buttonSet.find('.reset').removeClass('invisible');
 					}
 				});
