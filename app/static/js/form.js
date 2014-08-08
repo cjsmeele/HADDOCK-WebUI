@@ -258,32 +258,51 @@ $(function(){
 	// Multi- section/parameter code {{{
 
 	/**
-	 * Remove a section repetition.
+	 * Remove the last section repetition of an instance.
 	 *
 	 * @param instance the section's instance
-	 * @param repeatIndex the repetition number to remove
 	 */
-	function removeSectionRepetition(instance, repeatIndex){
+	function removeSectionRepetition(instance){
 		// TODO
 	}
 
 	/**
-	 * Remove a parameter value.
+	 * Remove a parameter instance's last value.
 	 *
 	 * @param instance the parameter's instance
-	 * @param repeatIndex the repetition number to remove
 	 */
-	function removeParameterRepetition(instance, repeatIndex){
-		// TODO
+	function removeParameterRepetition(instance){
+		var valueTable  =
+			$('#haddockform .row[data-global-instance-index="' + instance.globalIndex + '"]')
+				.find('.values.table');
+
+		instance.repetitionCount--;
+		instance.repetitions.pop();
+
+		// Remove the last value row from the DOM.
+		var lastValue = valueTable.children(':last-child');
+		lastValue.remove();
+
+		if(instance.repetitionCount > 0){
+			var lastButtonSet = valueTable.children(':last-child');
+			lastButtonSet.find('.plus').removeClass('invisible');
+			if(instance.repetitionCount > instance.component.repeat_min)
+				lastButtonSet.find('.minus').removeClass('invisible');
+		}
+
+		valueTable.find('.repetition-count').html(instance.repetitionCount);
+
+		if(instance.repetitionCount === 0 && instance.hasDummy){
+			valueTable.children('.dummy').show();
+		}
 	}
 
 	/**
 	 * Add a section repetition.
 	 *
 	 * @param instance the section's instance
-	 * @param repeatIndex the repetition after which a repetition will be inserted (-1 if it's a dummy)
 	 */
-	function addSectionRepetition(instance, repeatIndex){
+	function addSectionRepetition(instance){
 		// TODO: Create section
 	}
 
@@ -291,11 +310,35 @@ $(function(){
 	 * Add a parameter value.
 	 *
 	 * @param instance the parameter's instance
-	 * @param repeatIndex the repetition after which a repetition will be inserted (-1 if it's a dummy)
 	 */
-	function addParameterRepetition(instance, repeatIndex){
-		// TODO: Create parameter
-		//var 
+	function addParameterRepetition(instance){
+		var valueTable  =
+			$('#haddockform .row[data-global-instance-index="' + instance.globalIndex + '"]')
+				.find('.values.table');
+
+		// Repetition count is used by makeButtonSet(), update it first.
+		instance.repetitionCount++;
+
+		if(instance.hasDummy)
+			valueTable.children('.dummy').hide();
+
+		var repeatIndex = instance.repetitionCount - 1;
+		var value       = makeValue(instance, repeatIndex);
+
+		instance.repetitions.push(value.value);
+
+		if(instance.repetitionCount > 1){
+			var lastButtonSet = valueTable.children(':last-child');
+			lastButtonSet.find('.plus').addClass('invisible');
+			lastButtonSet.find('.minus').addClass('invisible');
+		}
+
+		// Currently, no repetition-count spans are added to parameter
+		// button sets, so this has no effect.
+		valueTable.find('.repetition-count').html(instance.repetitionCount);
+
+		// Insert the new value row.
+		valueTable.append(value.html);
 	}
 
 	// }}}
@@ -322,14 +365,14 @@ $(function(){
 	 */
 	function onMinusButton(e){
 		var buttonSet = $(this).parent('.buttonset');
+		var row       = $($(this).parents('.row')[0]);
+		var instance  = componentInstances[row.data('global-instance-index')]
 
 		if(buttonSet.is('.section-buttons')){
-			removeSectionRepetition();
+			removeSectionRepetition(instance);
 		}else if(buttonSet.is('.parameter-buttons')){
-			removeParameterRepetition();
+			removeParameterRepetition(instance);
 		}
-
-		// TODO
 
 		// Stop click events from reaching the header and folding this section
 		e.preventDefault();
@@ -343,18 +386,14 @@ $(function(){
 	 */
 	function onPlusButton(e){
 		var buttonSet = $(this).parent('.buttonset');
-		if(buttonSet.is('.section-buttons')){
-			var instance    = componentInstances[buttonSet.data('global-instance-index')];
-			var repeatIndex = buttonSet.data('repetition');
-			console.log(instance.component.label);
-			console.log(buttonSet.data('global-instance-index'));
-			console.log(repeatIndex);
-			addSectionRepetition(instance, repeatIndex);
-		}else if(buttonSet.is('.parameter-buttons')){
-			addParameterRepetition();
-		}
+		var row       = $($(this).parents('.row')[0]);
+		var instance  = componentInstances[row.data('global-instance-index')]
 
-		// TODO
+		if(buttonSet.is('.section-buttons')){
+			addSectionRepetition(instance);
+		}else if(buttonSet.is('.parameter-buttons')){
+			addParameterRepetition(instance);
+		}
 
 		e.preventDefault();
 		e.stopPropagation();
@@ -426,20 +465,21 @@ $(function(){
 			repeatIndex = 0
 
 		var buttonSet = '<div class="buttonset ' + instance.component.type + '-buttons'
-			+ (instance.component.type === 'parameter' ? ' table-cell shrink' : ' float-right') + '"'
-			+ ' data-data-index="'            + instance.component.dataIndex + '"'
-			+ ' data-global-instance-index="' + instance.globalIndex         + '"'
-			+ ' data-repetition="'            + repeatIndex                  + '">';
+			+ (instance.component.type === 'parameter' ? ' table-cell shrink align-right' : ' float-right')
+			+ '">';
 
 		if(instance.component.repeat){
 			if(repeatIndex === -1){
-				// Dummy instance
+				// Dummy repetition
 				buttonSet +=
 					(instance.component.type === 'section')
 						? '(none - click to add)'
-						: '(none)';
+						: 'none';
 			}else{
-				buttonSet += (repeatIndex + 1) + ' / ' + instance.repetitionCount;
+				buttonSet += '<span class="repetition-index">' + (repeatIndex + 1) + '</span>';
+				if(instance.component.type === 'section'){
+					buttonSet += ' / <span class="repetition-count">' + instance.repetitionCount + '</span>';
+				}
 			}
 		}
 
@@ -456,12 +496,19 @@ $(function(){
 		}
 
 		buttonSet += '<i title="Remove this ' + (instance.component.type === 'section' ? 'block' : 'value') + '" '
-			+ 'class="minus fa fa-fw fa-minus invisible"></i>';
+			+ 'class="minus fa fa-fw fa-minus'
+			+ (!instance.component.repeat
+				// Remove the line below if you decide to support adding / removing
+				// repetitions that are not the last in their instance's repetitions array.
+				|| (repeatIndex < instance.repetitionCount - 1)
+				|| (instance.component.repeat_min === instance.repetitionCount)
+				? ' invisible' : '')
+			+ '"></i>';
 		buttonSet += '<i title="Add a ' + (instance.component.type === 'section' ? 'block' : 'value') + '" '
 			+ 'class="plus fa fa-fw fa-plus'
 			+ (!instance.component.repeat
 				// Remove the line below if you decide to support adding / removing
-				// repetitions that are not the last in their instances repetitions array.
+				// repetitions that are not the last in their instance's repetitions array.
 				|| (repeatIndex < instance.repetitionCount - 1)
 				|| (instance.component.repeat_max !== null && instance.repetitionCount >= instance.component.repeat_max)
 				? ' invisible' : '')
@@ -528,10 +575,13 @@ $(function(){
 	 * @param instance the parameter instance
 	 * @param repeatIndex an index number for repeated parameters, -1 to render a dummy input
 	 *
-	 * @return a value element
+	 * @return { html: html, value: <default_value> }
 	 */
 	function makeValue(instance, repeatIndex){
-		var valueHTML = '<div class="value table-row">';
+		var valueHTML = '<div class="value table-row';
+		if(repeatIndex === -1)
+			valueHTML += ' dummy';
+		valueHTML += '">';
 
 		var name = instance.component.name;
 		/**
@@ -742,6 +792,10 @@ $(function(){
 
 			if(component.type === 'section' || component.type === 'parameter'){
 				instance.repetitions     = [];
+				// repetitionCount is used throughout the file because at render time
+				// not all repetitions may have been rendered yet, so the length of
+				// the repetitions array can't be used to determine the amount of
+				// initial repetitions.
 				instance.repetitionCount = component.repeat_min;
 			}
 
@@ -793,6 +847,8 @@ $(function(){
 					var parameter = makeParameter(instance);
 					html += parameter.html;
 					instance.repetitions = parameter.repetitions;
+					if(component.repeat && component.repeat_min == 0)
+						instance.hasDummy = true;
 				}else if(component.type === 'paragraph'){
 					html += makeParagraph(instance);
 				}else{
@@ -936,7 +992,6 @@ $(function(){
 				async.eachSeries(componentInstances, function(instance, instanceCallback){
 					var deflated = { };
 					// Loop through instance properties and do conversions when necessary.
-						console.log(instance);
 					for(var key in instance){
 						if(key === 'component'){
 							// Save the component index number instead of the component object itself.
@@ -1179,7 +1234,7 @@ $(function(){
 			// Component data is acyclic
 			componentData = savedComponentData;
 
-			console.log('inflating components instances');
+			console.log('inflating component instance arrays');
 			inflateInstances(savedInstances, savedRootInstances, function(
 					inflatedComponentInstances, inflatedRootInstances){
 				componentInstances = inflatedComponentInstances;
