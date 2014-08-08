@@ -259,6 +259,17 @@ $(function(){
 
 	// Multi- section/parameter code {{{
 
+	/*
+	 * NOTE: These functions assume that adding / removing repetitions is
+	 *       allowed, i.e. that by doing so the repeat_min and repeat_max
+	 *       values are not exceeded.
+	 *       Because add/remove buttons are only visible when that action is
+	 *       allowed, this isn't that much of a problem, but if one were to
+	 *       call these functions manually (e.g. in a script that auto-fills
+	 *       other form elements based on filled in data) they must do these
+	 *       checks themselves.
+	 */
+
 	/**
 	 * Remove the last section repetition of an instance.
 	 *
@@ -305,7 +316,17 @@ $(function(){
 	 * @param instance the section's instance
 	 */
 	function addSectionRepetition(instance){
-		// TODO: Create section
+		var sectionrow = $('#haddockform .row[data-global-instance-index="' + instance.globalIndex + '"]');
+
+		// Repetition count is used by makeButtonSet(), update it first.
+		instance.repetitionCount++;
+
+		if(instance.hasDummy)
+			valueTable.children('.dummy').hide();
+
+		var repeatIndex = instance.repetitionCount - 1;
+		//var section = makeSection();
+		// TODO
 	}
 
 	/**
@@ -523,14 +544,19 @@ $(function(){
 	}
 
 	/**
-	 * Create the HTML for a single section component repetition.
+	 * Create a single section component repetition.
 	 *
 	 * @param instance the section instance to build
 	 * @param repeatIndex an index number for repeated sections, -1 to render a dummy section
+	 * @param createChildren (optional) if true, create new instances for all section children (if this is not a dummy section)
 	 *
-	 * @return { start: <startHTML>, end: <endHTML> }
+	 * @return
+	 *     if createChildren:
+	 *         { children: [], html: <SectionAndChildrenHTML> }
+	 *     else:
+	 *         { start: <startHTML>, end: <endHTML> }
 	 */
-	function makeSectionHTML(instance, repeatIndex){
+	function makeSection(instance, repeatIndex, createChildren){
 		var sectionStart =
 			  '<section' + (repeatIndex === -1 ? ' class="dummy"' : '')
 			+ (repeatIndex !== -1 ? ' data-repetition="' + repeatIndex + '"' : '')
@@ -548,7 +574,32 @@ $(function(){
 			  '</div>'
 			+ '</section>';
 
-		return { start: sectionStart, end: sectionEnd };
+		var html = {
+			start: sectionStart,
+			end:   sectionEnd
+		};
+
+		if(createChildren){
+			var children = []; ///< This is a list of child instances
+
+			// It would make the script too complicated if this function had an
+			// option to render asynchronously (with a callback) when it has to
+			// render children, so we have to use a simple blocking loop here.
+			for(var i=0; i<instance.component.children.length; i++){
+				// TODO 20140808
+			}
+		}
+
+		if(createChildren){
+			return {
+				html: html.start + html.content + html.end,
+				children: children
+			};
+		}else{
+			return {
+				html: html
+			};
+		}
 	}
 
 	/**
@@ -557,12 +608,12 @@ $(function(){
 	 * @param instance
 	 * @param callback called with an array of repetitions, each having a html {start: S, end: S} property
 	 */
-	function makeSection(instance, callback){
+	function makeSectionRepetitions(instance, callback){
 		var repetitions = [];
 
 		for(var i=0; i<(instance.component.repeat ? instance.component.repeat_min : 1); i++){
 			var repetition = {
-				html: makeSectionHTML(instance, i),
+				html: makeSection(instance, i).html,
 				children: []
 			};
 
@@ -581,9 +632,9 @@ $(function(){
 	 * @return { html: html, value: <default_value> }
 	 */
 	function makeValue(instance, repeatIndex){
-		var valueHTML = '<div class="value table-row'
-			+ (repeatIndex === -1
-				? ' dummy' : '')
+		var valueHTML =
+			  '<div class="value table-row'
+			+ (repeatIndex === -1 ? ' dummy' : '')
 			+ '"';
 		if(repeatIndex !== -1)
 			valueHTML += ' data-repetition="' + repeatIndex + '"';
@@ -659,8 +710,8 @@ $(function(){
 		valueHTML += '</div>';
 
 		return {
-			html:  valueHTML,
-			value: pfilter(instance.component.default)
+			'html':  valueHTML,
+			'value': pfilter(instance.component.default)
 		};
 	}
 
@@ -674,7 +725,7 @@ $(function(){
 	 *
 	 * @return { label: html, values: html, reptitions: [value, value, ...] }
 	 */
-	function makeParameter(instance){
+	function makeParameterRepetitions(instance){
 		var label = '<label for="f_'
 			+ replaceRepetitionPlaceholders(instance.component.name, instance, 0)
 			+ '" title="'
@@ -806,10 +857,19 @@ $(function(){
 			}
 
 			if(component.type === 'section'){
+				// Instead of simply leaving sections to makeSectionRepetitions(),
+				// we need to handle the rendering of section children ourselves
+				// here.
+				//
+				// renderComponents() is only used at form build time (it does
+				// various initializations we don't want to repeat), so we
+				// can't have makeSection() call renderComponents() for its
+				// children when the user clicks on the 'add' button for a
+				// repeatable section.
 				if(component.repeat && component.repeat_min == 0){
-					instance.hasDummy  = true;
-					var dummyHTML = makeSectionHTML(instance, -1);
-					dummyHTML     = dummyHTML.start + dummyHTML.end;
+					instance.hasDummy = true;
+					var dummyHTML     = makeSection(instance, -1).html;
+					dummyHTML         = dummyHTML.start + dummyHTML.end;
 
 					html += dummyHTML;
 
@@ -820,7 +880,7 @@ $(function(){
 					}
 					componentCallback();
 				}else{
-					var repetitions = makeSection(instance);
+					var repetitions = makeSectionRepetitions(instance);
 					async.timesSeries(repetitions.length, function(i, timesCallback){
 						instance.repetitions.push(repetitions[i].children);
 						html += repetitions[i].html.start;
@@ -839,8 +899,8 @@ $(function(){
 							$('#items-loaded').html(instancesRendered);
 						}
 
-						// To prevent hanging browsers on slow devices.
-						// Give the browser some time to respond to user
+						// To prevent hanging browsers on slow devices,
+						// give the browser some time to respond to user
 						// input and redraw the window.
 
 						// Only do this for sections, not other components,
@@ -850,7 +910,9 @@ $(function(){
 				}
 			}else{
 				if(component.type === 'parameter'){
-					var parameter = makeParameter(instance);
+					// Parameters don't need a special case for repeat_min==0 here,
+					// since they don't contain children that may need to be renderComponents()ed.
+					var parameter = makeParameterRepetitions(instance);
 					html += parameter.html;
 					instance.repetitions = parameter.repetitions;
 					if(component.repeat && component.repeat_min == 0)
@@ -928,7 +990,7 @@ $(function(){
 			},
 			function(callback){
 				// Fold all sections
-				//$('#haddockform section').each(function(){ toggleSection(this, true); });
+				$('#haddockform section').each(function(){ toggleSection(this, true); });
 				// Set form level
 				setLevel(formLevel, true);
 				// Show the form
