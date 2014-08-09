@@ -17,7 +17,7 @@
  * Opening braces:       on the same line
  * Spaces around braces: only for inline functions: `function(){ a=1; }`
  *
- * Indentation: tabs
+ * Indentation: tabs (in short: noet sw=4 ts=4)
  * Alignment:   spaces (align assignments, string concats, etc.)
  *
  * Documentation: docblocks before every function
@@ -40,9 +40,9 @@
  *   - No:
  *     - Use buildForm() to generate form HTML
  *       - Recursively generate component instances and their HTML
- *         - Render sections with makeSection()
+ *         - Render sections with makeSectionRepetitions()
  *           - Render paragraphs with makeParagraph()
- *           - Render parameters with makeParameter()
+ *           - Render parameters with makeParameterRepetitions()
  *             - Render parameter values with makeValue()
  *     - Load form HTML into #haddockform > .content
  * - finalizeForm()
@@ -82,12 +82,9 @@
  * - An index in the component's own instances array
  * - A list of repetitions for this instance, which contains:
  *   (for sections:)
- *   - A list of child component instances
+ *   - A list of child component instances, for each repetition
  *   (for parameters:)
- *   - A list of parameter values
- *
- * The original `components[]` objects get an `instances[]` array that points to
- * entries in the `componentInstances[]` array.
+ *   - A list of parameter values, for each repetition
  *
  * Instances are occurrences of a component within a parent component, in the
  * sense that repeated parent blocks each have their own child component
@@ -96,36 +93,83 @@
  * that component, repetition data is instead saved in the `repetitions[]`
  * property.
  *
+ * Consider the following form structure, where Parameter Y has 2 instances:
+ *
+ * - instance (section X)
+ *   repetitions: [
+ *     (1) [
+ *       - childInstance (parameter Y)
+ *         repetitions: [
+ *           0, 1, 9   // Parameter Y is repeatable and has 1 to 3 values
+ *         ]
+ *       ...
+ *     ]
+ *     (2) [
+ *       - childInstance (parameter Y)
+ *         repetitions: [
+ *           4, 2
+ *         ]
+ *       ...
+ *     ]
+ *   ]
+ *
+ *
  * During instance generation, a HTML string is generated for the initial form.
  * When all initial instances have been created, this HTML string is inserted
  * into the form container (`#haddockform > .content`).
  * At this point, event handlers can be attached to the form.
  *
- * The initial HTML as generated above is also stored in localStorage, to allow
- * clients to skip the rendering step after the first time (but of course,
- * changes to the data model will be detected and will trigger a regeneration).
+ * The initial HTML and instances as generated above are also stored in
+ * localStorage, to allow clients to skip the rendering step after the first
+ * time (but of course, changes to the data model will be detected and will
+ * trigger a regeneration).
+ *
+ *
+ * TODO:
+ *
+ * Some issues that may need to be solved sooner or later, but don't currently
+ * break the script's functionality:
+ *
+ * - renderComponents() and makeSection() contain duplicated code.
+ *
+ * - Object Orientation (e.g. instance.addRepetition()) would make the code more
+ *   readable and easier to understand. However, this would introduce additional
+ *   difficulties with caching (we can't serialize function objects).
+ *
+ * - The necessity of client-side caching may need to be re-evaluated. Caching was
+ *   considered necessary before certain "optimalizatons" were dropped, because
+ *   of slow HTML generation. Form building has sped up significantly since this
+ *   decision was made, to the point where loading times were about 1s on fast
+ *   PCs.
+ *   Dropping the cache would simplify some code and make OO possible (see above)
+ *
+ * - Radio buttons for choice datatypes with few options are currently not supported
+ *
+ * - Check boxes for true/false choices are currently not supported
  */
 
+// Don't add properties to global scope
 $(function(){
-	// Note that the members of components as provided by the webserver follow
-	// a lowercase/underscore naming convention.
-	var components         = formComponents;
-	var componentData      = []; // Flat version of components[].
-	var componentInstances = []; // Actual spawned sections and parameters, flat list
-	var rootInstances      = []; // Component instances at the root level (for tree-structure looping)
+
+	// Note that the members of formComponents[] as provided by the webserver
+	// follow a lowercase/underscore naming convention.
+	var rootComponents     = formComponents; // Component JSON data in a tree structure.
+	var componentData      = []; // Flat version of formComponents[] / rootComponents[].
+	var rootInstances      = []; // Component instances at the root level (for tree-structure looping).
+	var componentInstances = []; // Actual spawned sections and parameters, flat list.
 
 	var componentCount         = 0;
 	var componentInstanceCount = 0;
 	var instancesRendered      = 0;
 
-	var formHasChanged     = false;
-	var formLevelTooHigh   = false;
-	var formReady          = false;
+	var formHasChanged   = false;
+	var formLevelTooHigh = false;
+	var formReady        = false;
 
 	/**
 	 * Change the form level.
 	 *
-	 * @param name the level name to switch
+	 * @param name the level name to switch to
 	 * @param force show/hide components even if we are already on the specified level
 	 */
 	function setLevel(name, force){
@@ -153,6 +197,7 @@ $(function(){
 
 		formHasChanged = false;
 
+		// Mark the level element in the chooser as selected
 		$('.levelchooser li.selected').removeClass('selected');
 		$('.levelchooser li.level-'+name).addClass('selected');
 
@@ -166,6 +211,7 @@ $(function(){
 			rowsToShow.show();
 		}
 
+		// Disable hidden input elements just in case
 		rowsToHide.find('> .values input, > .values select').prop('disabled', true);
 		rowsToShow.find('> .values input, > .values select').prop('disabled', false);
 
@@ -248,7 +294,7 @@ $(function(){
 		}else if(input.is('select')){
 			input.val(input.attr('data-default'));
 		}else if(input.is('.checkgroup')){
-			// TODO: Checkboxes are currently not supported
+			// TODO: Radio buttons are currently not supported
 
 			// Now let's just hope the default value doesn't contain double quotes...
 			//input.find('input[type="radio"][value="' + input.attr('data-default') + '"]').prop('checked', true);
@@ -276,7 +322,59 @@ $(function(){
 	 * @param instance the section's instance
 	 */
 	function removeSectionRepetition(instance){
-		// TODO
+		var sectionRow = $('#haddockform .row[data-global-instance-index="' + instance.globalIndex + '"]');
+
+		/**
+		 * Remove section child instances recursively
+		 *
+		 * @param sectionInstance
+		 * @param repeatIndex the repeatIndex of sectionInstance to clear
+		 */
+		function removeChildInstances(sectionInstance, repeatIndex){
+			console.log('---');
+			console.log(sectionInstance.repetitions[repeatIndex]);
+			console.log(sectionInstance.repetitionCount);
+			// For each child
+			for(var i=0; i<sectionInstance.repetitions[repeatIndex].length; i++){
+				var instance = sectionInstance.repetitions[repeatIndex][i];
+				console.log('child type ' + instance.component.type);
+				console.log(instance);
+				if(instance.component.type === 'section' && instance.repetitionCount > 0){
+					console.log('removing child instances of ' + instance.component.label);
+					// For each child section repetition
+					// Loop backwards to allow splice to work
+					for(var j=instance.repetitions.length-1; j>=0; j--){
+						console.log('  -> repetition ' + j);
+						console.log([instance, j]);
+						removeChildInstances(instance, j);
+					}
+				}
+				// We can't splice componentInstances[] because index numbers are saved
+				// everywhere. Set this entry to null instead, so it can be GCed.
+				componentInstances[instance.globalIndex] = null;
+			}
+			sectionInstance.repetitions.splice(repeatIndex, 1);
+		}
+
+		removeChildInstances(instance, instance.repetitionCount-1);
+		instance.repetitionCount--;
+
+		var lastRepetition = sectionRow.children(':last-child');
+		lastRepetition.remove();
+
+		// Show and hide add / remove buttons
+		if(instance.repetitionCount > 0){
+			var lastButtonSet = sectionRow.children(':last-child').find('> header > .buttonset');
+			lastButtonSet.find('.plus').removeClass('invisible');
+			if(instance.repetitionCount > instance.component.repeat_min)
+				lastButtonSet.find('.minus').removeClass('invisible');
+		}
+
+		sectionRow.find('> section > header .repetition-count').html(instance.repetitionCount);
+
+		if(instance.repetitionCount === 0 && instance.hasDummy){
+			sectionRow.children('.dummy').show();
+		}
 	}
 
 	/**
@@ -296,6 +394,7 @@ $(function(){
 		var lastValue = valueTable.children(':last-child');
 		lastValue.remove();
 
+		// Show and hide add / remove buttons
 		if(instance.repetitionCount > 0){
 			var lastButtonSet = valueTable.children(':last-child');
 			lastButtonSet.find('.plus').removeClass('invisible');
@@ -316,17 +415,34 @@ $(function(){
 	 * @param instance the section's instance
 	 */
 	function addSectionRepetition(instance){
-		var sectionrow = $('#haddockform .row[data-global-instance-index="' + instance.globalIndex + '"]');
+		var sectionRow = $('#haddockform .row[data-global-instance-index="' + instance.globalIndex + '"]');
 
 		// Repetition count is used by makeButtonSet(), update it first.
 		instance.repetitionCount++;
 
 		if(instance.hasDummy)
-			valueTable.children('.dummy').hide();
+			sectionRow.children('.dummy').hide();
 
 		var repeatIndex = instance.repetitionCount - 1;
-		//var section = makeSection();
-		// TODO
+
+		// makeSection() handles instance creation and inserts its own repetition for us,
+		// this differs from how addParameterRepetition() works.
+		var section   = makeSection(instance, repeatIndex, true);
+		var sectionEl = $(section.html);
+
+		sectionEl.find('section').each(function(){
+			toggleSection($(this), true);
+		});
+
+		// Show and hide add / remove buttons
+		if(instance.repetitionCount > 1){
+			var lastButtonSet = sectionRow.children(':last-child').find('> header > .buttonset');
+			lastButtonSet.find('.plus').addClass('invisible');
+			lastButtonSet.find('.minus').addClass('invisible');
+		}
+
+		sectionRow.find('> section > header .repetition-count').html(instance.repetitionCount);
+		sectionRow.append(sectionEl);
 	}
 
 	/**
@@ -350,6 +466,7 @@ $(function(){
 
 		instance.repetitions.push(value.value);
 
+		// Show and hide add / remove buttons
 		if(instance.repetitionCount > 1){
 			var lastButtonSet = valueTable.children(':last-child');
 			lastButtonSet.find('.plus').addClass('invisible');
@@ -546,9 +663,11 @@ $(function(){
 	/**
 	 * Create a single section component repetition.
 	 *
+	 * It is an error to call this function with instantiate=true and repeatIndex=-1.
+	 *
 	 * @param instance the section instance to build
 	 * @param repeatIndex an index number for repeated sections, -1 to render a dummy section
-	 * @param createChildren (optional) if true, create new instances for all section children (if this is not a dummy section)
+	 * @param instantiate (optional) if true, create new instances for all section children. also adds a repetition to the given instance.
 	 *
 	 * @return
 	 *     if createChildren:
@@ -556,7 +675,7 @@ $(function(){
 	 *     else:
 	 *         { start: <startHTML>, end: <endHTML> }
 	 */
-	function makeSection(instance, repeatIndex, createChildren){
+	function makeSection(instance, repeatIndex, instantiate){
 		var sectionStart =
 			  '<section' + (repeatIndex === -1 ? ' class="dummy"' : '')
 			+ (repeatIndex !== -1 ? ' data-repetition="' + repeatIndex + '"' : '')
@@ -579,18 +698,93 @@ $(function(){
 			end:   sectionEnd
 		};
 
-		if(createChildren){
-			var children = []; ///< This is a list of child instances
+		console.log('makeSection: ' + instance.globalIndex + ' / ' + instance.component.type + ' / ' + repeatIndex);
+
+		if(instantiate){
+			if(repeatIndex === -1){
+				alert('Error: Cannot create section children without a non-dummy parent (in makeSection())');
+				return;
+			}
+			html.content = '';
+			var children = [];
+			instance.repetitions.push(children);
 
 			// It would make the script too complicated if this function had an
 			// option to render asynchronously (with a callback) when it has to
-			// render children, so we have to use a simple blocking loop here.
+			// render children, so we use a simple blocking loop here.
+
 			for(var i=0; i<instance.component.children.length; i++){
-				// TODO 20140808
+
+				// XXX: FIXME: Currently, this loop is mostly a duplication of renderComponents(),
+				//             we may need to generalize this...
+				// The main differences between this function and renderComponents()
+				// are that this function takes a section instance instead
+				// of a component list as an argument, and is synchronous as
+				// opposed to asynchronous with callbacks.
+
+				// XXX: Make sure to reflect changes made here in renderComponents().
+
+				var childComponent = instance.component.children[i];
+				if('hidden' in childComponent && childComponent.hidden)
+					continue;
+
+				var childInstance  = {
+					component:        childComponent,
+					parentInstance:   instance,
+					parentRepetition: repeatIndex,
+					hasDummy:         false
+				};
+
+				childInstance.globalIndex = componentInstances.push(childInstance) - 1;
+				children.push(childInstance);
+
+				html.content += '<div class="row';
+				if('accesslevels' in childComponent){
+					var levelCount = childComponent.accesslevels.length;
+					for(var j=0; j<levelCount; j++)
+						html.content += ' level-' + childComponent.accesslevels[j];
+				}
+
+				html.content += '" data-data-index="'            + childComponent.dataIndex;
+				html.content += '" data-global-instance-index="' + childInstance.globalIndex + '">';
+
+				if(childComponent.type === 'section' || childComponent.type === 'parameter'){
+					childInstance.repetitions     = [];
+					childInstance.repetitionCount = childComponent.repeat ? childComponent.repeat_min : 1;
+				}
+
+				if(childComponent.type === 'section'){
+					if(childComponent.repeat && childComponent.repeat_min == 0){
+						childInstance.hasDummy = true;
+						dummy = makeSection(childInstance, -1);
+						html.content += dummy.html.start + dummy.html.end;
+					}else{
+						for(var j=0; j<childInstance.repetitionCount; j++){
+							var subSection = makeSection(childInstance, j, true);
+						console.log('========' + childInstance.repetitionCount + '========');
+						console.log(childInstance.repetitions);
+							html.content += subSection.html;
+						}
+					}
+				}else{
+					if(childComponent.type === 'parameter'){
+						var parameter = makeParameterRepetitions(childInstance);
+						html.content += parameter.html;
+						childInstance.repetitions = parameter.repetitions;
+						if(childComponent.repeat && childComponent.repeat_min == 0)
+							childInstance.hasDummy = true;
+					}else if(childComponent.type === 'paragraph'){
+						html.content += makeParagraph(childInstance);
+					}else{
+						alert('Error: Can\'t render unknown component type: ' + childComponent.type);
+					}
+				}
+
+				html.content += '</div>';
 			}
 		}
 
-		if(createChildren){
+		if(instantiate){
 			return {
 				html: html.start + html.content + html.end,
 				children: children
@@ -604,6 +798,7 @@ $(function(){
 
 	/**
 	 * Make repeat_min amount of sections, or 1 if repeat is not set.
+	 * Does not create child instances.
 	 *
 	 * @param instance
 	 * @param callback called with an array of repetitions, each having a html {start: S, end: S} property
@@ -815,6 +1010,9 @@ $(function(){
 		var html = '';
 
 		async.eachSeries(components, function(component, componentCallback){
+			// XXX: Make sure to reflect changes made here in makeSection(),
+			//      there is currently some duplicated code.
+
 			if('hidden' in component && component.hidden){
 				componentCallback();
 				return;
@@ -853,7 +1051,7 @@ $(function(){
 				// not all repetitions may have been rendered yet, so the length of
 				// the repetitions array can't be used to determine the amount of
 				// initial repetitions.
-				instance.repetitionCount = component.repeat_min;
+				instance.repetitionCount = component.repeat ? component.repeat_min : 1;
 			}
 
 			if(component.type === 'section'){
@@ -969,11 +1167,11 @@ $(function(){
 						var buttonSet = $(this).parent('.value').find('.buttonset');
 						if($(this).val() == $(this).attr('data-default')){
 							buttonSet.find('.reset').addClass('invisible');
-						}else{
+						}else if($(this).attr('data-default') !== ''){
 							buttonSet.find('.reset').removeClass('invisible');
 						}
 					}else if($(this).is('.buttongroup')){
-						// TODO: Checkboxes are currently not supported
+						// TODO: Radio buttons are currently not supported
 						//buttonSet.find('.reset').removeClass('invisible');
 					}
 				});
@@ -1316,7 +1514,7 @@ $(function(){
 			// No, generate a new form and store it in cache
 			async.waterfall([
 				function(callback){
-					buildForm(formComponents, function(result){ callback(null, result); });
+					buildForm(rootComponents, function(result){ callback(null, result); });
 				},
 				function(result, callback){
 					// Note: [0].innerHTML should be faster than html() but the
@@ -1341,4 +1539,9 @@ $(function(){
 		else
 			loadForm(true);
 	});
+
+	// For debugging
+	window.dumpInstances = function(){
+		return componentInstances;
+	}
 });
