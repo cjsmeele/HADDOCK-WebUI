@@ -151,9 +151,14 @@
 // Don't add properties to global scope
 $(function(){
 
+	// Avoid modifying global variables, bring them into local scope.
+	var formLevels     = window.formLevels;
+	var formLevelIndex = window.formLevelIndex;
+	var userLevel      = window.userLevel;
+
 	// Note that the members of formComponents[] as provided by the webserver
 	// follow a lowercase/underscore naming convention.
-	var rootComponents     = formComponents; // Component JSON data in a tree structure.
+	var rootComponents     = window.formComponents; // Component JSON data in a tree structure.
 	var componentData      = []; // Flat version of formComponents[] / rootComponents[].
 	var rootInstances      = []; // Component instances at the root level (for tree-structure looping).
 	var componentInstances = []; // Actual spawned sections and parameters, flat list.
@@ -165,6 +170,8 @@ $(function(){
 	var formHasChanged   = false;
 	var formLevelTooHigh = false;
 	var formReady        = false;
+
+	var formVersion = null;
 
 	/**
 	 * Change the form level.
@@ -537,6 +544,110 @@ $(function(){
 
 		e.preventDefault();
 		e.stopPropagation();
+	}
+
+	/**
+	 * Submit the form in JSON format
+	 */
+	function onSubmit(e){
+
+		/**
+		 * Package a section or parameter component instance for submission.
+		 *
+		 * @param instance a parameter or section instance
+		 */
+		function packageInstance(instance){
+			if(instance.component.type !== 'section' && instance.component.type !== 'parameter'){
+				// This shouldn't happen.
+				alert('Error: Cannot pacakge instance of type "' + instance.component.type + '"');
+				return;
+			}
+
+			var entry = {
+				// Note that the server expects JSON post data in lowercase/underscores format.
+
+				// As long as the server uses the same data model, component
+				// numbers should remain the same.
+				component_index: instance.component.dataIndex,
+				repetitions:     []
+			};
+
+			for(var i=0; i<instance.repetitionCount; i++){
+				// For each repetition...
+				if(instance.component.type === 'section'){
+					var repetition = []; // Contains child instances
+					for(var j=0; j<instance.repetitions[i].length; j++){
+						// For each child instance...
+						if(instance.repetitions[i][j].component.type === 'section'
+								|| instance.repetitions[i][j].component.type === 'parameter'){
+							repetition.push(packageInstance(instance.repetitions[i][j]));
+						}
+					}
+					entry.repetitions.push(repetition);
+				}else if(instance.component.type === 'parameter'){
+					// Push parameter value i.
+
+					// Grab an up to date value from the ith input element.
+					var element = $('#haddockform .row[data-global-instance-index="'
+						+ instance.globalIndex
+						+ '"] .value:not(.dummy)').find('input, select').eq(i);
+
+					entry.repetitions.push(element.val());
+				}
+			}
+
+			return entry;
+		}
+
+		try {
+			var postData = {
+				form_version: formVersion,
+				level:        formLevels[formLevelIndex],
+				instances:    []
+			};
+
+			// First create an acyclic tree structure to hold all instances that we
+			// need to submit.
+
+			for(var i=0; i<rootInstances.length; i++){
+				if(rootInstances[i].component.type !== 'section'
+						&& rootInstances[i].component.type !== 'parameter'){
+					// Filter out data-less components
+					continue;
+				}
+				postData.instances.push(packageInstance(rootInstances[i]));
+			}
+
+			$.ajax({
+				method: 'post',
+				url:    Config.postURL,
+				data:   { json: JSON.stringify(postData) } ,
+				dataType: 'json'
+			}).done(function(data){
+				if(!('success' in data) || (data.success !== true && !('message' in data))){
+					alert('Error: Could not submit form');
+				}else if(data.success !== true){
+					alert('Error: Could not submit form: ' + data.message);
+				}else{
+					// OK
+					console.log('form submitted successfully');
+				}
+			}).error(function(xhr, status, err){
+				alert('Error: Could not submit form: ' + err.message);
+			});
+		}catch(ex){
+			// This catches JSON stringify errors
+			alert('Error: Could not submit form');
+			console.log(ex);
+			throw(ex);
+		}finally{
+			// Whatever happens, prevent the browser from submitting the form
+			// itself and leaving the page.
+			if(typeof(e) !== 'undefined')
+				e.preventDefault();
+			return false;
+		}
+
 	}
 
 	// }}}
@@ -1163,16 +1274,18 @@ $(function(){
 				$('#haddockform').on('change', 'input, select', function(e){
 					formHasChanged = true;
 
-					if($(this).is('input[type="text"]') || $(this).is('select')){
-						var buttonSet = $(this).parent('.value').find('.buttonset');
-						if($(this).val() == $(this).attr('data-default')){
-							buttonSet.find('.reset').addClass('invisible');
-						}else if($(this).attr('data-default') !== ''){
-							buttonSet.find('.reset').removeClass('invisible');
+					if(Config.showResetButton){
+						if($(this).is('input[type="text"]') || $(this).is('select')){
+							var buttonSet = $(this).parent('.value').find('.buttonset');
+							if($(this).val() == $(this).attr('data-default')){
+								buttonSet.find('.reset').addClass('invisible');
+							}else if($(this).attr('data-default') !== ''){
+								buttonSet.find('.reset').removeClass('invisible');
+							}
+						}else if($(this).is('.buttongroup')){
+							// TODO: Radio buttons are currently not supported
+							//buttonSet.find('.reset').removeClass('invisible');
 						}
-					}else if($(this).is('.buttongroup')){
-						// TODO: Radio buttons are currently not supported
-						//buttonSet.find('.reset').removeClass('invisible');
 					}
 				});
 
@@ -1184,12 +1297,15 @@ $(function(){
 					setLevel($(this).data('name'));
 				});
 
+				$('#haddockform').on('submit', onSubmit);
+
 				callback();
 			},
 			function(callback){
 				// Fold all sections
 				$('#haddockform section').each(function(){ toggleSection(this, true); });
 				// Set form level
+				// This also enables the submit button
 				setLevel(formLevel, true);
 				// Show the form
 				$('.loading').addClass('hidden');
@@ -1488,6 +1604,8 @@ $(function(){
 					+ modelVersionTag);
 			}
 		}
+
+		formVersion = modelVersionTag;
 
 		// Did we successfully load an up to date form from cache?
 		if(typeof(savedForm) === 'string' && savedForm.length){

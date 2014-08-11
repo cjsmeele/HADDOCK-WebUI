@@ -14,7 +14,9 @@
 		var userLevel      = {{ user_accesslevel_index }};
 
 		var Config = {
-			hideDisabledComponents: true
+			hideDisabledComponents: true,
+			showResetButton:        true,
+			postURL:                '{{ url_for('form') }}'
 		};
 
 		var levelsMtime = {{ al_mtime    | round(0, 'floor') | int}};
@@ -82,7 +84,7 @@
 	<form id="haddockform" class="nice div60 haddock hidden" method="post">
 		<div class="content"></div>
 		<div class="align-center">
-			<input type="submit" />
+			<input type="submit" disabled />
 		</div>
 	</form>
 </section>

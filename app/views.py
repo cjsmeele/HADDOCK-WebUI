@@ -1,4 +1,4 @@
-from flask import render_template
+from flask import request, jsonify, render_template
 from app import app, cache
 
 import os.path
@@ -84,7 +84,7 @@ def index():
     )
     return render_template("index.html", accesslevels=accesslevels)
 
-@app.route('/form')
+@app.route('/form', methods=['GET', 'POST'])
 def form():
     accesslevels, al_mtime = get_cached_json(
         'accesslevels',
@@ -100,5 +100,26 @@ def form():
     if accesslevels is None or model is None:
         raise ModelFormatError('Could not load model description and/or access levels')
 
-    # TODO: Get user access level through auth
-    return render_form(model, accesslevels, 2, al_mtime, model_mtime)
+    if request.method == 'GET':
+        # TODO: Get user access level through auth
+        return render_form(model, accesslevels, 2, al_mtime, model_mtime)
+
+    elif request.method == 'POST':
+        if 'json' in request.form:
+            jsonForm = request.form['json']
+            try:
+                data = json.loads(request.form['json'])
+            except ValueError:
+                return jsonify(success=False, message='Invalid POST format (no valid JSON)')
+
+            #print(json.dumps(data,
+            #    sort_keys=True,
+            #    indent=(4),
+            #))
+
+            # TODO
+
+            return jsonify(success=False, message='Unimplemented')
+            #return jsonify(success=True)
+        else:
+            return jsonify(success=False, message='Invalid POST format')
