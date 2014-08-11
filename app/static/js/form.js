@@ -559,7 +559,7 @@ $(function(){
 		function packageInstance(instance){
 			if(instance.component.type !== 'section' && instance.component.type !== 'parameter'){
 				// This shouldn't happen.
-				alert('Error: Cannot pacakge instance of type "' + instance.component.type + '"');
+				alert('Error: Cannot package instance of type "' + instance.component.type + '"');
 				return;
 			}
 

@@ -22,7 +22,8 @@
 		var levelsMtime = {{ al_mtime    | round(0, 'floor') | int}};
 		var modelMtime  = {{ model_mtime | round(0, 'floor') | int}};
 
-		var modelVersionTag = 'v{{ al_mtime | round(0, 'floor') | int }}-'
+		var modelVersionTag = '{{ version_tag }}';
+		'v{{ al_mtime | round(0, 'floor') | int }}-'
 			+ '{{ model_mtime | round(0, 'floor') | int }}';
 
 		var formComponents = {{ model | tojson | safe }};

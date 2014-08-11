@@ -53,6 +53,10 @@ def get_cached_json(key, filename, cache_condition=True, force_renew=False, auto
     else:
         return data, newmtime
 
+def generateVersionTag(al_mtime, model_mtime):
+    return 'v' + str(int(al_mtime)) + '-' + str(int(model_mtime));
+
+
 def render_form_template(model, accesslevels, user_accesslevel, al_mtime, model_mtime):
     return render_template(
         'form.html',
@@ -63,6 +67,7 @@ def render_form_template(model, accesslevels, user_accesslevel, al_mtime, model_
         user_accesslevel_index = 2,
         al_mtime               = al_mtime,
         model_mtime            = model_mtime,
+        version_tag            = generateVersionTag(al_mtime, model_mtime),
     )
 
 # Caching is optional. We need the second function definition when cache is not defined.
@@ -112,14 +117,25 @@ def form():
             except ValueError:
                 return jsonify(success=False, message='Invalid POST format (no valid JSON)')
 
-            #print(json.dumps(data,
-            #    sort_keys=True,
-            #    indent=(4),
-            #))
+            print(json.dumps(data,
+                sort_keys=True,
+                indent=(4),
+            ))
 
-            # TODO
+            try:
+                if data['form_version'] != generateVersionTag(al_mtime, model_mtime):
+                    return jsonify(success=False, message='The data model has changed since you loaded this form, please reload and try again.')
 
-            return jsonify(success=False, message='Unimplemented')
-            #return jsonify(success=True)
+                accesslevel_names = [ level['name'] for level in accesslevels ]
+
+                if data['level'] not in accesslevel_names or accesslevel_names.index(data['level']) > 999: # TODO: <-- user access level index
+                    return jsonify(success=False, message='The selected form level is too high, please request a higher access level or select a different level above.')
+            except KeyError:
+                return jsonify(success=False, message='Submitted form data is incomplete.')
+
+            # TODO: Save uploaded files
+            # TODO: Call jsontocns.py
+
+            return jsonify(success=False, message='Unimplemented.')
         else:
-            return jsonify(success=False, message='Invalid POST format')
+            return jsonify(success=False, message='Invalid POST format.')
