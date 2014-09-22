@@ -106,7 +106,7 @@ def form():
         raise ModelFormatError('Could not load model description and/or access levels')
 
     if request.method == 'GET':
-        # TODO: Get user access level through auth
+        # TODO: Get user access level through auth (but only if not run locally)
         return render_form(model, accesslevels, 2, al_mtime, model_mtime)
 
     elif request.method == 'POST':

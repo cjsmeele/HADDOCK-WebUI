@@ -574,6 +574,10 @@ $(function(){
 
 			for(var i=0; i<instance.repetitionCount; i++){
 				// For each repetition...
+
+				// We do not leave out parameters that we shouldn't have access to.
+				// It is the server's job to check what parameters we can and cannot set.
+
 				if(instance.component.type === 'section'){
 					var repetition = []; // Contains child instances
 					for(var j=0; j<instance.repetitions[i].length; j++){
@@ -621,7 +625,7 @@ $(function(){
 			$.ajax({
 				method: 'post',
 				url:    Config.postURL,
-				data:   { json: JSON.stringify(postData) } ,
+				data:   { json: JSON.stringify(postData) },
 				dataType: 'json'
 			}).done(function(data){
 				if(!('success' in data) || (data.success !== true && !('message' in data))){
@@ -643,7 +647,7 @@ $(function(){
 		}finally{
 			// Whatever happens, prevent the browser from submitting the form
 			// itself and leaving the page.
-			if(typeof(e) !== 'undefined')
+			if(typeof(e) !== 'undefined') // Allow onSubmit() to be called without event context
 				e.preventDefault();
 			return false;
 		}
@@ -997,10 +1001,10 @@ $(function(){
 					var input = '<input type="text" ' + idNameDefaultAttrs
 						+ ' value="' + pfilter(instance.component.default) + '" />';
 				}else if(instance.component.datatype === 'integer'){
-					var input = '<input type="text" pattern="\d*" ' + idNameDefaultAttrs
+					var input = '<input type="text" pattern="\\d*" ' + idNameDefaultAttrs
 						+ ' value="' + pfilter(instance.component.default) + '" />';
 				}else if(instance.component.datatype === 'float'){
-					var input = '<input type="text" pattern="\d*(\.\d+)?" ' + idNameDefaultAttrs
+					var input = '<input type="text" pattern="\\d*(\\.\\d+)?" ' + idNameDefaultAttrs
 						+ ' value="' + pfilter(instance.component.default) + '" />';
 				}else if(instance.component.datatype === 'file'){
 					var input = '<input type="file" ' + idNameDefaultAttrs + ' />';
