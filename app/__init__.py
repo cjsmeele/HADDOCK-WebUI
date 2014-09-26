@@ -1,10 +1,15 @@
 from flask import Flask
+
+class HADDOCKApp(Flask):
+    def __init__(self, name):
+        super(HADDOCKApp, self).__init__(name)
+
 # Initialize application
-app = Flask(__name__)
+app = HADDOCKApp(__name__)
 
 # Load config
 from config import config
-app.config.from_object(config['default'])
+app.config.from_object(config)
 
 if app.config['CACHE_HTML'] or app.config['CACHE_MODEL'] or app.config['CACHE_ACCESSLEVELS']:
     from flask.ext.cache import Cache

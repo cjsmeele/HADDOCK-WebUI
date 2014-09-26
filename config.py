@@ -1,10 +1,23 @@
 class Config(object):
+    # These configuration options are used as default settings.
+    # All settings can be overridden by Config subclasses (see ConfigServer and ConfigLocal),
+    # some can also be set with arguments to run.py when run locally, see run.py for details.
+
+    # These flask settings do not apply to WSGI.
+    FLASK_HOST = '127.0.0.1'
+    FLASK_PORT = 5000
+
     # When more than RADIO_MAX options are present in a choice parameter,
     # a dropdown is rendered instead of a radio input.
-    FRONTEND_RADIO_MAX  = 3
+    # TODO: Currently not supported
+    RADIO_MAX = 3
 
-    FRONTEND_ACCESSLEVEL_FILE = 'res/accesslevels.json'
-    FRONTEND_MODEL_FILE       = 'res/model.json'
+    ACCESSLEVEL_FILE = './model/accesslevels.json'
+    MODEL_FILE       = './model/model.json'
+
+    # The default root directory under which to create output/job directories.
+    # Can be overridden by the --output-root parameter
+    OUTPUT_ROOT = './jobs'
 
     # Turn these off if there is no cache backend available or Flask-Cache is
     # not installed.
@@ -19,9 +32,36 @@ class Config(object):
     # that can't be passed through this config object (yet).
     CACHE_BACKEND = 'simple'
 
-class ConfigDefault(Config):
-    pass
+    # TODO: Unimplemented
+    USE_AUTH = False
 
-config = {
-    'default': ConfigDefault
+
+# Default server configuration
+class ConfigServer(Config):
+    # When run on a server, listen on all interfaces and require authentication.
+
+    # Note that listening on TCP ports < 1024 usually requires root privileges.
+    # I recommend running HADDOCK-WebUI under Apache as a WSGI application
+    # instead to avoid having to run it as root.
+    FLASK_HOST = '0.0.0.0'
+    FLASK_PORT = 80
+
+    USE_AUTH = True
+
+# Default stand-alone configuration
+class ConfigLocal(Config):
+    # When run locally, only allow connections from localhost and disable auth.
+    FLASK_HOST = '127.0.0.1'
+    FLASK_PORT = 5000
+
+    USE_AUTH = False
+
+
+configurations = {
+    # A list of configuration names and associated Config classes.
+    'server': ConfigServer,
+    'local':  ConfigLocal,
 }
+
+# This will be overridden by run.py when run locally.
+config = configurations['server']

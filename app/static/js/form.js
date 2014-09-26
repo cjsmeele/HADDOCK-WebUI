@@ -743,6 +743,7 @@ $(function(){
 				+ replaceRepetitionPlaceholders(instance.component.default, instance, repeatIndex)
 				+ ')" class="reset fa fa-fw fa-undo invisible"></i>';
 		}else if(instance.component.type === 'section' && instance.component.repeat){
+			// Don't crowd the interface too much.
 			/*
 			buttonSet += '<i title="Scroll towards the previous block of this type" class="next fa fa-fw fa-lg fa-caret-up'
 				+ '"></i>';
@@ -843,7 +844,7 @@ $(function(){
 				if('hidden' in childComponent && childComponent.hidden)
 					continue;
 
-				var childInstance  = {
+				var childInstance = {
 					component:        childComponent,
 					parentInstance:   instance,
 					parentRepetition: repeatIndex,
@@ -1260,7 +1261,9 @@ $(function(){
 	function finalizeForm(c_callback){
 		async.series([
 			function(callback){
-				// Attach all event handlers here
+				// Attach all event handlers here.
+				// Only use delegated event handlers to avoid having to reattach
+				// them when spawning extra component instances.
 
 				$('#haddockform').on('click', 'section:not([class~="dummy"]) header', function(e){
 					toggleSection($(this).parent('section'));

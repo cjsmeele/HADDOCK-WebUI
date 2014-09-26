@@ -84,7 +84,7 @@ else:
 def index():
     accesslevels = get_cached_json(
         'accesslevels',
-        app.config['FRONTEND_ACCESSLEVEL_FILE'],
+        app.config['ACCESSLEVEL_FILE'],
         app.config['CACHE_ACCESSLEVELS'],
     )
     return render_template("index.html", accesslevels=accesslevels)
@@ -93,12 +93,12 @@ def index():
 def form():
     accesslevels, al_mtime = get_cached_json(
         'accesslevels',
-        app.config['FRONTEND_ACCESSLEVEL_FILE'],
+        app.config['ACCESSLEVEL_FILE'],
         app.config['CACHE_ACCESSLEVELS'],
     )
     model, model_mtime = get_cached_json(
         'model',
-        app.config['FRONTEND_MODEL_FILE'],
+        app.config['MODEL_FILE'],
         app.config['CACHE_MODEL'],
     )
 

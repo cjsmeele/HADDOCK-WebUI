@@ -1,5 +1,5 @@
 *~
 *.swp
 *.pyc
-/res/*
+/model/*
 /log/*
