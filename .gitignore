@@ -3,3 +3,4 @@
 *.pyc
 /model/*
 /log/*
+/jobs/*
