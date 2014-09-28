@@ -1365,6 +1365,8 @@ $(function(){
 		});
 	}
 
+	// Serialization and unserialization of form data {{{
+
 	/**
 	 * Replace references to other objects in instances arrays with index numbers.
 	 * Used to allow for JSON serialization.
@@ -1520,6 +1522,9 @@ $(function(){
 		});
 	}
 
+	// }}}
+	// Form storage / loading {{{
+
 	/**
 	 * Store all serializable information of this form, necessary for rebuilding
 	 * it, in localStorage.
@@ -1654,6 +1659,8 @@ $(function(){
 			]);
 		}
 	}
+
+	// }}}
 
 	async.nextTick(function(){
 		// Don't load from localStorage if the query string contains "nocache".

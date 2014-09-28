@@ -11,7 +11,7 @@ app = HADDOCKApp(__name__)
 from config import config
 app.config.from_object(config)
 
-if app.config['CACHE_HTML'] or app.config['CACHE_MODEL'] or app.config['CACHE_ACCESSLEVELS']:
+if app.config['CACHE_MODEL'] or app.config['CACHE_ACCESSLEVELS']:
     from flask.ext.cache import Cache
     cache = Cache(app,config={'CACHE_TYPE': app.config['CACHE_BACKEND']})
     cache.init_app(app)
@@ -21,6 +21,7 @@ else:
 # Set up logger
 import logging
 from logging.handlers import RotatingFileHandler
+
 handler = RotatingFileHandler('log/server.log', maxBytes=4*1024**2, backupCount=1)
 handler.setLevel(logging.WARNING)
 app.logger.addHandler(handler)
