@@ -11,6 +11,9 @@ import time
 def handle_form_post(request, model):
     # Our return value (which should be JSON encoded) will be passed back to the client.
 
+    #print request.form.keys()
+    #print request.files
+
     if 'json' in request.form:
         try:
             data = json.loads(request.form['json'])

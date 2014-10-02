@@ -27,8 +27,11 @@
  *
  * Use single quotes for strings unless quote escaping hinders readability.
  *
- * Aim for compatibility with Firefox 24+, Chrome 33+, Safari 5.1+ and IE8+.
+ * Aim for compatibility with Firefox 24+, Chrome 33+, Safari 5.1+ and IE10+*.
  * Using jQuery where appropriate, there really shouldn't be any compatibility issues.
+ *
+ * * IE10 is the lowest IE version that supports JS FormData, which we need for
+ *   asynchonously submitting forms with files.
  */
 
 /**
@@ -550,6 +553,9 @@ $(function(){
 	 * Submit the form in JSON format
 	 */
 	function onSubmit(e){
+		// FIXME: Chromium breaks when fields that don't validate are hidden at the time of a submit.
+		//        To avoid this problem, the form element now has the 'novalidate' attribute.
+		//        We should probably call the validation function manually on input value change.
 
 		/**
 		 * Package a section or parameter component instance for submission.
@@ -622,11 +628,21 @@ $(function(){
 				postData.instances.push(packageInstance(rootInstances[i]));
 			}
 
+			var formData = new FormData();
+			formData.append('json', JSON.stringify(postData));
+
+			$('#haddockform input[type="file"]').each(function(){
+				formData.append($(this).attr('name'), this.files[0]);
+			});
+
 			$.ajax({
-				method: 'post',
-				url:    Config.postURL,
-				data:   { json: JSON.stringify(postData) },
-				dataType: 'json'
+				method:      'post',
+				url:         Config.postURL,
+				//data:        { json: JSON.stringify(postData) },
+				data:        formData,
+				dataType:    'json',
+				processData: false,
+				contentType: false
 			}).done(function(data){
 				if(!('success' in data) || (data.success !== true && !('message' in data))){
 					alert('Error: Could not submit form');
@@ -651,7 +667,6 @@ $(function(){
 				e.preventDefault();
 			return false;
 		}
-
 	}
 
 	// }}}
@@ -1002,10 +1017,10 @@ $(function(){
 					var input = '<input type="text" ' + idNameDefaultAttrs
 						+ ' value="' + pfilter(instance.component.default) + '" />';
 				}else if(instance.component.datatype === 'integer'){
-					var input = '<input type="text" pattern="\\d*" ' + idNameDefaultAttrs
+					var input = '<input type="text" pattern="-?\\d*" ' + idNameDefaultAttrs
 						+ ' value="' + pfilter(instance.component.default) + '" />';
 				}else if(instance.component.datatype === 'float'){
-					var input = '<input type="text" pattern="\\d*(\\.\\d+)?" ' + idNameDefaultAttrs
+					var input = '<input type="text" pattern="-?\\d*(\\.\\d+)?" ' + idNameDefaultAttrs
 						+ ' value="' + pfilter(instance.component.default) + '" />';
 				}else if(instance.component.datatype === 'file'){
 					var input = '<input type="file" ' + idNameDefaultAttrs + ' />';
