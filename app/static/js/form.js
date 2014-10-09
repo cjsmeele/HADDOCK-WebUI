@@ -622,7 +622,7 @@ $(function(){
 			for(var i=0; i<rootInstances.length; i++){
 				if(rootInstances[i].component.type !== 'section'
 						&& rootInstances[i].component.type !== 'parameter'){
-					// Filter out data-less components
+					// Filter out data-less component types
 					continue;
 				}
 				postData.instances.push(packageInstance(rootInstances[i]));
@@ -632,7 +632,19 @@ $(function(){
 			formData.append('json', JSON.stringify(postData));
 
 			$('#haddockform input[type="file"]').each(function(){
-				formData.append($(this).attr('name'), this.files[0]);
+				//formData.append($(this).attr('name'), this.files[0]);
+
+				// Use the component, instance and repetition numbers as a field name for submitted files
+				var componentIndex  = $(this).parents('.row').data('data-index');
+				var instanceIndex   = $(this).parents('.row').data('global-instance-index');
+				var repetitionIndex = $(this).parents('.value').data('repetition');
+				formData.append(
+					'file'
+						+ '_c' + componentIndex
+						+ '_i' + instanceIndex
+						+ '_r' + repetitionIndex,
+					this.files[0]
+				);
 			});
 
 			$.ajax({

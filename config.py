@@ -34,6 +34,9 @@ class Config(object):
     # TODO: Unimplemented
     USE_AUTH = False
 
+    # Max request size for POSTs (including all submitted files).
+    MAX_CONTENT_LENGTH = 50 * 1024**2 # 50 MiB
+
 
 # Default server configuration
 class ConfigServer(Config):
@@ -54,6 +57,9 @@ class ConfigLocal(Config):
     FLASK_PORT = 5000
 
     USE_AUTH = False
+
+    # Disable file upload size limit.
+    MAX_CONTENT_LENGTH = None
 
 
 configurations = {

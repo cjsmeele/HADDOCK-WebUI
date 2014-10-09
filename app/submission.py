@@ -4,6 +4,7 @@ from app   import app
 from form_common import Model
 
 import os
+import re
 import json
 import time
 
@@ -92,6 +93,23 @@ def handle_form_post(request, model):
         #    indent=(4),
         #))
 
+        for name, file in request.files.iteritems():
+            match = re.search(r'file_c(?P<component>[0-9]+)_i(?P<instance>[0-9]+)_r(?P<repetition>[0-9]+)', name)
+            if match:
+                captures = match.groupdict()
+                file.save(os.path.join(
+                    output_directory,
+                    # Convert to int and back just in case.
+                    'file_c' + str(int(captures['component']))
+                    + '_i'   + str(int(captures['instance']))
+                    + '_r'   + str(int(captures['repetition']))
+                ))
+            else:
+                # A file with an incorrect field name was submitted.
+                # This shouldn't happen, so we can safely ignore it.
+                pass
+
         return jsonify(success=False, message='Unimplemented.')
+        #return jsonify(success=True, message='Done.')
     else:
         return jsonify(success=False, message='Invalid POST format.')
