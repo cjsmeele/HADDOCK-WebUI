@@ -80,34 +80,51 @@ def handle_form_post(request, model):
 
         os.mkdir(output_directory)
 
-        with open(output_directory + '/' + 'formdata.json', 'w') as formdata_file:
-            # We could simply dump the submitted json string, but we might
-            # need to make changes to the data before we write it to disk.
-            json.dump(data, formdata_file)
-
-        # TODO: Save uploaded PDB files
-        # TODO: Call jsontocns.py
-
         #print(json.dumps(data,
         #    sort_keys=True,
         #    indent=(4),
         #))
 
+        # Allowing the client to set the paths/names of uploaded files would be
+        # dangerous, we make this list ourselves.
+        assert 'files' not in data
+        data['files'] = [] # A list of submitted files with their component, instance and repetition numbers.
+        # This information is appended to the form data struct.
+
         for name, file in request.files.iteritems():
+            # Try to obtain component, instance and repetition numbers from the file's field name.
             match = re.search(r'file_c(?P<component>[0-9]+)_i(?P<instance>[0-9]+)_r(?P<repetition>[0-9]+)', name)
             if match:
                 captures = match.groupdict()
-                file.save(os.path.join(
-                    output_directory,
+
+                # NOTE: Do NOT allow any user input to be used in the filename as is.
+                filename = (
                     # Convert to int and back just in case.
                     'file_c' + str(int(captures['component']))
                     + '_i'   + str(int(captures['instance']))
                     + '_r'   + str(int(captures['repetition']))
-                ))
+                )
+
+                file.save(os.path.join(output_directory, filename))
+
+                # Store file information in the formdata json.
+                data['files'].append({
+                    'name':       filename,
+                    'component':  str(int(captures['component'])),
+                    'instance':   str(int(captures['instance'])),
+                    'repetition': str(int(captures['repetition'])),
+                })
+
             else:
-                # A file with an incorrect field name was submitted.
+                # A file with an invalid field name was submitted, don't save it.
                 # This shouldn't happen, so we can safely ignore it.
                 pass
+
+        with open(output_directory + '/' + 'formdata.json', 'w') as formdata_file:
+            json.dump(data, formdata_file)
+
+        # TODO: Copy / link the template CNS to the job directory
+        # TODO: Call jsontocns.py
 
         return jsonify(success=False, message='Unimplemented.')
         #return jsonify(success=True, message='Done.')
