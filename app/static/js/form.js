@@ -1119,23 +1119,43 @@ $(function(){
 	 */
 	function prepareComponents(components, callback, weight){
 		async.eachSeries(components, function(component, componentCallback){
+			var hidden = false;
+
 			if('hidden' in component && component.hidden){
-				componentCallback();
-				return;
+				//componentCallback();
+				//return;
+
+				// Add hidden components to componentData as well.
+				// They are not used within this webapplication and will not be
+				// sent back to the server, but they need to be in this array to
+				// keep component numbers consistent with the backend.
+
+				hidden = true;
 			}
 
 			if(typeof(weight) === 'undefined')
 				weight = 1;
 
 			componentCount         += 1;
-			componentInstanceCount += weight;
+			componentInstanceCount += hidden ? 0 : weight;
 
 			var dataIndex       = componentData.push(component) - 1;
 			component.dataIndex = dataIndex;
 
 			if(component.type === 'section'){
-				prepareComponents(component.children, componentCallback,
-					(component.repeat ? weight * component.repeat_min : weight));
+				prepareComponents(
+					component.children,
+					componentCallback,
+					(
+						hidden
+						? 0
+						: (
+							component.repeat
+							? weight * component.repeat_min
+							: weight
+						)
+					)
+				);
 			}else{
 				componentCallback();
 			}
