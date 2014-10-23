@@ -121,12 +121,17 @@ def handle_form_post(request, model):
                 pass
 
         with open(output_directory + '/' + 'formdata.json', 'w') as formdata_file:
-            json.dump(data, formdata_file)
+            json.dump(data, formdata_file, indent=4)
 
         # TODO: Copy / link the template CNS to the job directory
         # TODO: Call jsontocns.py
 
-        return jsonify(success=False, message='Unimplemented.')
+        #return jsonify(success=False, message='Unimplemented.')
         #return jsonify(success=True, message='Done.')
+        return jsonify(
+            success=True,
+            message='Form information stored in job directory "' + output_directory + '".\n'
+                  + 'Please run jsontocns.py manually. (see the examples/ directory in your CNSParser repository)'
+        )
     else:
         return jsonify(success=False, message='Invalid POST format.')

@@ -663,6 +663,8 @@ $(function(){
 				}else{
 					// OK
 					console.log('form submitted successfully');
+					if('message' in data)
+						alert(data.message);
 				}
 			}).error(function(xhr, status, err){
 				alert('Error: Could not submit form: ' + err.message);
