@@ -440,6 +440,17 @@ $(function(){
 		var section   = makeSection(instance, repeatIndex, true);
 		var sectionEl = $(section.html);
 
+		{ // Hide children with higher access levels. See setLevel().
+			var rowsToHide = sectionEl.find('.row:not([class~="level-' + formLevels[formLevelIndex] + '"])');
+
+			if(Config.hideDisabledComponents)
+				rowsToHide.hide();
+
+			// Disable hidden input elements just in case
+			rowsToHide.find('> .values input, > .values select').prop('disabled', true);
+		}
+
+		// Fold the new sections' child sections. Keep the section itself unfolded.
 		sectionEl.find('section').each(function(){
 			toggleSection($(this), true);
 		});
