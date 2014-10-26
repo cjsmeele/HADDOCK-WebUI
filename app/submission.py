@@ -88,7 +88,8 @@ def handle_form_post(request, model):
         # Allowing the client to set the paths/names of uploaded files would be
         # dangerous, we make this list ourselves.
         assert 'files' not in data
-        data['files'] = [] # A list of submitted files with their component, instance and repetition numbers.
+
+        data['files'] = dict() # A dictionary of file instances with their filenames.
         # This information is appended to the form data struct.
 
         for name, file in request.files.iteritems():
@@ -98,22 +99,31 @@ def handle_form_post(request, model):
                 captures = match.groupdict()
 
                 # NOTE: Do NOT allow any user input to be used in the filename as is.
+
+                component_i  = str(int(captures['component']))
+                instance_i   = str(int(captures['instance']))
+                repetition_i = str(int(captures['repetition']))
+
                 filename = (
                     # Convert to int and back just in case.
-                    'file_c' + str(int(captures['component']))
-                    + '_i'   + str(int(captures['instance']))
-                    + '_r'   + str(int(captures['repetition']))
+                    'file_c' + component_i
+                    + '_i'   + instance_i
+                    + '_r'   + repetition_i
                 )
 
                 file.save(os.path.join(output_directory, filename))
 
                 # Store file information in the formdata json.
-                data['files'].append({
-                    'name':       filename,
-                    'component':  str(int(captures['component'])),
-                    'instance':   str(int(captures['instance'])),
-                    'repetition': str(int(captures['repetition'])),
-                })
+
+                if component_i not in data['files']:
+                    data['files'][component_i] = dict()
+
+                if instance_i not in data['files'][component_i]:
+                    data['files'][component_i][instance_i] = dict()
+
+                data['files'][component_i][instance_i][repetition_i] = {
+                    'name': filename,
+                }
 
             else:
                 # A file with an invalid field name was submitted, don't save it.

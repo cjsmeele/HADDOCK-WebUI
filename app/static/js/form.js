@@ -341,21 +341,13 @@ $(function(){
 		 * @param repeatIndex the repeatIndex of sectionInstance to clear
 		 */
 		function removeChildInstances(sectionInstance, repeatIndex){
-			console.log('---');
-			console.log(sectionInstance.repetitions[repeatIndex]);
-			console.log(sectionInstance.repetitionCount);
 			// For each child
 			for(var i=0; i<sectionInstance.repetitions[repeatIndex].length; i++){
 				var instance = sectionInstance.repetitions[repeatIndex][i];
-				console.log('child type ' + instance.component.type);
-				console.log(instance);
 				if(instance.component.type === 'section' && instance.repetitionCount > 0){
-					console.log('removing child instances of ' + instance.component.label);
 					// For each child section repetition
 					// Loop backwards to allow splice to work
 					for(var j=instance.repetitions.length-1; j>=0; j--){
-						console.log('  -> repetition ' + j);
-						console.log([instance, j]);
 						removeChildInstances(instance, j);
 					}
 				}
@@ -642,17 +634,37 @@ $(function(){
 			var formData = new FormData();
 			formData.append('json', JSON.stringify(postData));
 
-			$('#haddockform input[type="file"]').each(function(){
-				//formData.append($(this).attr('name'), this.files[0]);
 
+			var fileInstances = { };
+
+			$('#haddockform input[type="file"]').each(function(){
 				// Use the component, instance and repetition numbers as a field name for submitted files
-				var componentIndex  = $(this).parents('.row').data('data-index');
-				var instanceIndex   = $(this).parents('.row').data('global-instance-index');
-				var repetitionIndex = $(this).parents('.value').data('repetition');
+				var componentIndex      = $(this).parents('.row').data('data-index');
+				var globalInstanceIndex = $(this).parents('.row').data('global-instance-index');
+				var localInstanceIndex  = null;
+				var repetitionIndex     = $(this).parents('.value').data('repetition');
+
+				if(''+componentIndex in fileInstances){
+					var componentInstances = fileInstances[''+componentIndex];
+					localInstanceIndex = componentInstances.indexOf(globalInstanceIndex);
+					if(localInstanceIndex == -1){
+						// This is a new instance.
+						localInstanceIndex = componentInstances.push(globalInstanceIndex) - 1;
+					}else{
+						// This is a new repetition.
+					}
+				}else{
+					// This is a new component.
+					fileInstances[''+componentIndex] = [
+						globalInstanceIndex
+					];
+					localInstanceIndex = 0;
+				}
+
 				formData.append(
 					'file'
 						+ '_c' + componentIndex
-						+ '_i' + instanceIndex
+						+ '_i' + localInstanceIndex
 						+ '_r' + repetitionIndex,
 					this.files[0]
 				);
@@ -854,8 +866,6 @@ $(function(){
 			end:   sectionEnd
 		};
 
-		console.log('makeSection: ' + instance.globalIndex + ' / ' + instance.component.type + ' / ' + repeatIndex);
-
 		if(instantiate){
 			if(repeatIndex === -1){
 				alert('Error: Cannot create section children without a non-dummy parent (in makeSection())');
@@ -917,8 +927,6 @@ $(function(){
 					}else{
 						for(var j=0; j<childInstance.repetitionCount; j++){
 							var subSection = makeSection(childInstance, j, true);
-						console.log('========' + childInstance.repetitionCount + '========');
-						console.log(childInstance.repetitions);
 							html.content += subSection.html;
 						}
 					}
