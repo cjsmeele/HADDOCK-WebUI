@@ -1,14 +1,27 @@
 {% extends "base.html" %}
 {% block content -%}
-<section class="content-index">
+<section class="content-index row">
 	<header>
 		<h1>HADDOCK-WebUI</h1>
 	</header>
-	<ul>
-		<li>
+	<section class="column width6-12">
+		<header>
+			<h2>Start a new run</h2>
+		</header>
+		<p>
 			<a href="{{ url_for('form') }}">HADDOCK form, any level</a>
 			(<a href="{{ url_for('form', nocache='') }}">no cache</a>)
-		</li>
-	</ul>
+		</p>
+	</section>
+	<section class="column width6-12">
+		<header>
+			<h2>Load with formdata.json</h2>
+		</header>
+		<form action="{{ url_for('form', action='resume') }}" method="post" enctype="multipart/form-data">
+			<label for="f_form_data">Select your formdata.json file:</label>
+			<input id="f_form_data" type="file" name="form_data" />
+			<input type="submit" value="Load form" />
+		</form>
+	</section>
 </section>
 {% endblock %}

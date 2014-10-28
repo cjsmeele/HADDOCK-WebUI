@@ -1636,7 +1636,7 @@ $(function(){
 	 *
 	 * @param forceRenew when true, no attempt is made to load the form from cache
 	 */
-	function loadForm(forceRenew){
+	function loadForm(forceRenew, form_data){
 		/**
 		 * Convert a JSON string to an object with validation.
 		 */

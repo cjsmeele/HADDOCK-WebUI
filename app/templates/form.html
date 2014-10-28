@@ -4,11 +4,14 @@
 	<script type="text/javascript" src="{{ url_for('static', filename='js/form.js') }}"></script>
 	<script type="text/javascript">
 		"use strict";
+
+		// Access levels
 		var formLevels = [
 			{% for level in accesslevels -%}
 			'{{ level.name }}',
 			{% endfor -%}
 		];
+
 		var formLevelIndex = {{ accesslevel_index }};
 		var formLevel      = formLevels[formLevelIndex];
 		var userLevel      = {{ user_accesslevel_index }};
@@ -27,6 +30,9 @@
 			+ '{{ model_mtime | round(0, 'floor') | int }}';
 
 		var formComponents = {{ model | tojson | safe }};
+
+		// Uploaded form data, if any.
+		var formData = {{ form_data | tojson | safe }};
 	</script>
 {% endblock -%}
 {% block content -%}
@@ -82,7 +88,7 @@
 		</div>
 	</div>
 
-	<form id="haddockform" class="nice div60 haddock hidden" method="post" enctype="multipart/form-data" novalidate>
+	<form id="haddockform" class="nice div60 haddock hidden" method="post" enctype="multipart/form-data" action="{{ url_for('form') }}" novalidate>
 		<div class="content"></div>
 		<div class="align-center">
 			<input type="submit" disabled />
