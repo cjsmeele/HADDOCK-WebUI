@@ -91,7 +91,19 @@
 	<form id="haddockform" class="nice div60 haddock hidden" method="post" enctype="multipart/form-data" action="{{ url_for('form') }}" novalidate>
 		<div class="content"></div>
 		<div class="align-center">
-			<input type="submit" disabled />
+			<input type="button" id="f_savedata" value="Save values" disabled />
+			<input type="submit" id="f_submit"   value="Submit"      disabled />
+		</div>
+		<div class="formdata-links hidden">
+			<p>
+				<!-- To save your filled in information, right click the following link and press "Save link as...". -->
+				The following file contains all current parameter values. You can upload this file later to continue filling in the form or to restart a run.
+			</p>
+			<p>
+				Please note that any files you may have selected for upload are not saved in this file.
+			</p>
+			<ul>
+			</ul>
 		</div>
 	</form>
 </section>

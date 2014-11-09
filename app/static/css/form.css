@@ -236,4 +236,12 @@ form.haddock .checkgroup label {
 }
 
 /*   }}} */
+
+.formdata-links {
+	margin-top: 20px;
+}
+.formdata-links ul {
+	margin-top: 10px;
+}
+
 /* }}} */

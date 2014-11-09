@@ -176,6 +176,20 @@ $(function(){
 
 	var formVersion = null;
 
+	function onFormChange(){
+		formHasChanged = true;
+
+		$('#haddockform .formdata-links ul li.current').each(function(){
+			$(this).find('a').css('textDecoration', 'line-through');
+			$(this).html($(this).html()
+				+ ' <span class="dark grey">'
+					+ '(form has changed, press "Save values" to generate a new link)'
+				+ '</span>');
+
+			$(this).removeClass('current');
+		});
+	}
+
 	/**
 	 * Change the form level.
 	 *
@@ -205,6 +219,8 @@ $(function(){
 			}
 		}
 
+		// Remove 'current' mark from generated formdata download links.
+		onFormChange();
 		formHasChanged = false;
 
 		// Mark the level element in the chooser as selected
@@ -507,6 +523,8 @@ $(function(){
 		var input = buttonSet.parent('.value').find('input, select');
 		resetInput(input);
 
+		onFormChange();
+
 		e.preventDefault();
 		e.stopPropagation();
 	}
@@ -526,6 +544,8 @@ $(function(){
 		}else if(buttonSet.is('.parameter-buttons')){
 			removeParameterRepetition(instance);
 		}
+
+		onFormChange();
 
 		// Stop click events from reaching the header and folding this section
 		e.preventDefault();
@@ -548,8 +568,170 @@ $(function(){
 			addParameterRepetition(instance);
 		}
 
+		onFormChange();
+
 		e.preventDefault();
 		e.stopPropagation();
+	}
+
+	/**
+	 * Package a section or parameter component instance for submission.
+	 *
+	 * @param instance a parameter or section instance
+	 * @param ordered whether to use the old ordered formdata format
+	 */
+	function packageInstance(instance, ordered){
+		if(instance.component.type !== 'section' && instance.component.type !== 'parameter'){
+			// This shouldn't happen.
+			alert('Error: Cannot package instance of type "' + instance.component.type + '"');
+			return;
+		}
+
+		if(ordered){
+			var entry = {
+				// Note that the server expects JSON post data in lowercase/underscores format.
+
+				// As long as the server uses the same data model, component
+				// numbers should remain the same.
+				component_index: instance.component.dataIndex,
+				name: (
+					instance.component.type === 'section'
+						? instance.component.label
+						: instance.component.name
+				),
+				repetitions: []
+			};
+		}else{
+			var entry = []; // A list of repetitions
+		}
+
+		for(var i=0; i<instance.repetitionCount; i++){
+			// For each repetition...
+
+			// We do not leave out parameters that we shouldn't have access to.
+			// It is the server's job to check what parameters we can and cannot set.
+
+			if(instance.component.type === 'section'){
+				var repetition = ordered ? [] : {}; // Contains child instances
+
+				for(var j=0; j<instance.repetitions[i].length; j++){
+					// For each child instance...
+					if(instance.repetitions[i][j].component.type === 'section'
+							|| instance.repetitions[i][j].component.type === 'parameter'){
+
+						if(ordered){
+							repetition.push(packageInstance(instance.repetitions[i][j], ordered));
+						}else{
+							repetition[
+								instance.repetitions[i][j].component.type === 'section'
+									? instance.repetitions[i][j].component.label
+									: instance.repetitions[i][j].component.name
+							] = packageInstance(instance.repetitions[i][j], ordered);
+						}
+					}
+				}
+
+				if(ordered)
+					entry.repetitions.push(repetition);
+				else
+					entry.push(repetition);
+			}else if(instance.component.type === 'parameter'){
+				// Push parameter value i.
+
+				// Grab an up to date value from the ith input element.
+				var element = $('#haddockform .row[data-global-instance-index="'
+					+ instance.globalIndex
+					+ '"] .value:not(.dummy)').find('input, select').eq(i);
+
+				if(ordered)
+					entry.repetitions.push(element.val());
+				else
+					entry.push(element.val());
+			}
+		}
+
+		return entry;
+	}
+
+	/**
+	 * Generate a formData structure, ready for submission to the server.
+	 */
+	function makeFormData(ordered){
+		if(typeof(ordered) === 'undefined')
+			ordered = true;
+
+		var formData = {
+			form_version: formVersion,
+			level:        formLevels[formLevelIndex],
+			instances:    ordered ? [] : {}
+		};
+
+		// Create an acyclic tree structure to hold all section and parameter instances.
+		for(var i=0; i<rootInstances.length; i++){
+			if(rootInstances[i].component.type !== 'section'
+					&& rootInstances[i].component.type !== 'parameter'){
+				// Filter out data-less component types
+				continue;
+			}
+			if(ordered){
+				formData.instances.push(packageInstance(rootInstances[i], ordered));
+			}else{
+				formData.instances[
+					rootInstances[i].component.type === 'section'
+						? rootInstances[i].component.label
+						: rootInstances[i].component.name
+				] = (packageInstance(rootInstances[i], ordered));
+			}
+		}
+
+		return formData;
+	}
+
+	function onSaveData(e){
+		onSaveData.saveCount = ++onSaveData.saveCount || 1;
+
+		var formData  = makeFormData(false);
+		var timestamp = Math.round(Date.now());
+
+		// Create a link that contains the form data as a string.
+		var downloadAnchor = $('<a id="f_formdata_' + timestamp + '">');
+		var downloadName = 'HADDOCK-formdata-'+onSaveData.saveCount+'.json';
+		downloadAnchor.html(downloadName);
+		downloadAnchor.attr('download', downloadName);
+
+		var downloadLi = $('<li>');
+		downloadLi.addClass('current');
+
+		if(typeof(window.Blob) !== 'undefined' && typeof(window.URL) !== 'undefined'){
+			// The browser supports blobs, and hopefully URL.createObjectURL. Great!
+			var formDataBlob = new Blob([JSON.stringify(formData)], {type: 'application/json'})
+			downloadAnchor.attr('href', window.URL.createObjectURL(formDataBlob));
+
+			downloadLi.append(downloadAnchor);
+			$('#haddockform .formdata-links ul').append(downloadLi);
+
+			// We don't need to show the download link.
+			//$('#haddockform .formdata-links').removeClass('hidden');
+
+			// Automatically click the download link. The 'download' attribute
+			// on the anchor tells the browser what the filename should be.
+			downloadAnchor[0].click();
+		}else{
+			// FileAPI Blob and object URLs are not supported by some older browsers.
+			// Add a data URI version just in case.
+
+			// We pretend it's a binary stream to force a download when clicked.
+			downloadAnchor.attr('href', 'data:application/octet-stream;base64,' + window.btoa(JSON.stringify(formData)));
+			//downloadAnchor.attr('href', 'data:application/json;base64,' + btoa(JSON.stringify(formData)));
+
+			// Show a download link.
+			// If we were to click it automatically, we could automatically
+			// start the download, but no default filename could be given.
+			// Without a short explanation, this would be quite user-unfriendly.
+			downloadLi.append(downloadAnchor);
+			$('#haddockform .formdata-links ul').append(downloadLi);
+			$('#haddockform .formdata-links').removeClass('hidden');
+		}
 	}
 
 	/**
@@ -560,80 +742,10 @@ $(function(){
 		//        To avoid this problem, the form element now has the 'novalidate' attribute.
 		//        We should probably call the validation function manually on input value change.
 
-		/**
-		 * Package a section or parameter component instance for submission.
-		 *
-		 * @param instance a parameter or section instance
-		 */
-		function packageInstance(instance){
-			if(instance.component.type !== 'section' && instance.component.type !== 'parameter'){
-				// This shouldn't happen.
-				alert('Error: Cannot package instance of type "' + instance.component.type + '"');
-				return;
-			}
-
-			var entry = {
-				// Note that the server expects JSON post data in lowercase/underscores format.
-
-				// As long as the server uses the same data model, component
-				// numbers should remain the same.
-				component_index: instance.component.dataIndex,
-				repetitions:     []
-			};
-
-			for(var i=0; i<instance.repetitionCount; i++){
-				// For each repetition...
-
-				// We do not leave out parameters that we shouldn't have access to.
-				// It is the server's job to check what parameters we can and cannot set.
-
-				if(instance.component.type === 'section'){
-					var repetition = []; // Contains child instances
-					for(var j=0; j<instance.repetitions[i].length; j++){
-						// For each child instance...
-						if(instance.repetitions[i][j].component.type === 'section'
-								|| instance.repetitions[i][j].component.type === 'parameter'){
-							repetition.push(packageInstance(instance.repetitions[i][j]));
-						}
-					}
-					entry.repetitions.push(repetition);
-				}else if(instance.component.type === 'parameter'){
-					// Push parameter value i.
-
-					// Grab an up to date value from the ith input element.
-					var element = $('#haddockform .row[data-global-instance-index="'
-						+ instance.globalIndex
-						+ '"] .value:not(.dummy)').find('input, select').eq(i);
-
-					entry.repetitions.push(element.val());
-				}
-			}
-
-			return entry;
-		}
-
 		try {
-			var postData = {
-				form_version: formVersion,
-				level:        formLevels[formLevelIndex],
-				instances:    []
-			};
-
-			// First create an acyclic tree structure to hold all instances that we
-			// need to submit.
-
-			for(var i=0; i<rootInstances.length; i++){
-				if(rootInstances[i].component.type !== 'section'
-						&& rootInstances[i].component.type !== 'parameter'){
-					// Filter out data-less component types
-					continue;
-				}
-				postData.instances.push(packageInstance(rootInstances[i]));
-			}
-
-			var formData = new FormData();
-			formData.append('json', JSON.stringify(postData));
-
+			var postData = new FormData();
+			var formData = makeFormData();
+			postData.append('json', JSON.stringify(formData));
 
 			var fileInstances = { };
 
@@ -661,7 +773,7 @@ $(function(){
 					localInstanceIndex = 0;
 				}
 
-				formData.append(
+				postData.append(
 					'file'
 						+ '_c' + componentIndex
 						+ '_i' + localInstanceIndex
@@ -674,7 +786,7 @@ $(function(){
 				method:      'post',
 				url:         Config.postURL,
 				//data:        { json: JSON.stringify(postData) },
-				data:        formData,
+				data:        postData,
 				dataType:    'json',
 				processData: false,
 				contentType: false
@@ -1347,7 +1459,7 @@ $(function(){
 				});
 
 				$('#haddockform').on('change', 'input, select', function(e){
-					formHasChanged = true;
+					onFormChange();
 
 					if(Config.showResetButton){
 						if($(this).is('input[type="text"]') || $(this).is('select')){
@@ -1373,6 +1485,7 @@ $(function(){
 				});
 
 				$('#haddockform').on('submit', onSubmit);
+				$('#f_savedata').on('click', onSaveData);
 
 				callback();
 			},
@@ -1382,6 +1495,7 @@ $(function(){
 				// Set form level
 				// This also enables the submit button
 				setLevel(formLevel, true);
+				$('#f_savedata').prop('disabled', false);
 				// Show the form
 				$('.loading').addClass('hidden');
 				$('#haddockform').removeClass('hidden');
@@ -1575,7 +1689,6 @@ $(function(){
 				});
 			},
 			function(stepCallback){
-				// TODO: Check whether we really need rootInstances after form generation.
 				var inflatedRootInstances = [];
 
 				async.eachSeries(rootInstances, function(instanceIndex, instanceCallback){
@@ -1702,7 +1815,7 @@ $(function(){
 			inflateInstances(savedInstances, savedRootInstances, function(
 					inflatedComponentInstances, inflatedRootInstances){
 				componentInstances = inflatedComponentInstances;
-				rootInstances      = inflatedComponentInstances;
+				rootInstances      = inflatedRootInstances;
 
 				console.log('successfully loaded form version ' + modelVersionTag);
 				// We should now have the form and all required JS objects loaded.
@@ -1743,5 +1856,8 @@ $(function(){
 	// For debugging
 	window.dumpInstances = function(){
 		return componentInstances;
+	}
+	window.dumpRootInstances = function(){
+		return rootInstances;
 	}
 });
