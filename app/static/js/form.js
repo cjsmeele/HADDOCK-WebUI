@@ -1,41 +1,22 @@
 "use strict";
 
 /**
- * form.js - HADDOCK form generator
+ * form.js - HADDOCK form application
  */
 
 /**
- * Coding style for this script:
+ * Compatibility notes:
  *
- * Write strict-mode compliant JavaScript. See:
+ * This script is written in strict mode JavaScript. See:
  * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions_and_function_scope/Strict_mode#Changes_in_strict_mode
  *
- * Casing: camelCase  for variables and methods
- *         PascalCase for classes
- *         UPPER_CASE for constants
+ * We aim for compatibility with Firefox 24+, Chrome 33+, Safari 5.1+ and IE10+*.
  *
- * Opening braces:       on the same line
- * Spaces around braces: only for inline functions: `function(){ a=1; }`
- *
- * Indentation: tabs (in short: noet sw=4 ts=4)
- * Alignment:   spaces (align assignments, string concats, etc.)
- *
- * Documentation: docblocks before every function
- *
- * Wrapping: recommended but not required, at column 120 or 80
- *           (assume a tab width of 4 characters)
- *
- * Use single quotes for strings unless quote escaping hinders readability.
- *
- * Aim for compatibility with Firefox 24+, Chrome 33+, Safari 5.1+ and IE10+*.
- * Using jQuery where appropriate, there really shouldn't be any compatibility issues.
- *
- * * IE10 is the lowest IE version that supports JS FormData, which we need for
- *   asynchonously submitting forms with files.
+ * TODO: Display a warning when an incompatible browser is used.
  */
 
 /**
- * The execution order of this script is as follows:
+ * The execution order of this script is roughly as follows:
  *
  * - Does a localStorage cache entry exist for the form HTML and is it up-to-date?
  *   - Yes:
@@ -48,6 +29,9 @@
  *           - Render parameters with makeParameterRepetitions()
  *             - Render parameter values with makeValue()
  *     - Load form HTML into #haddockform > .content
+ * - Is there a formData object containing user submitted form data?
+ *   - Yes:
+ *     - Fill in the form with loadFormData()
  * - finalizeForm()
  *   - Attach event handlers
  *   - Set form level with setLevel() to a predefined value
@@ -76,13 +60,13 @@
  * `componentData[]` is basically a flat version of the `component[]` list. It is
  * used to provide quick access to a component's information using an index
  * number. Indices are saved in data-data-index attributes on HTML elements.
+ * This list is generated through a depth-first scan of `components[]`.
  *
  * `componentInstances[]` will be filled with instances of components.
  * Component instances contain a reference to a `components[]` object, and
  * depending on the component type:
  * - A reference to a parent instance (and it's repeat index) if this is not a root component
  * - An index in the componentInstances[] array
- * - An index in the component's own instances array
  * - A list of repetitions for this instance, which contains:
  *   (for sections:)
  *   - A list of child component instances, for each repetition
@@ -90,7 +74,7 @@
  *   - A list of parameter values, for each repetition
  *
  * Instances are occurrences of a component within a parent component, in the
- * sense that repeated parent blocks each have their own child component
+ * sense that repeated parent blocks each have different child component
  * instances.
  * Repetitions for the component itself do not create separate instances for
  * that component, repetition data is instead saved in the `repetitions[]`
@@ -98,21 +82,17 @@
  *
  * Consider the following form structure, where Parameter Y has 2 instances:
  *
- * - instance (section X)
+ * - Section instance
  *   repetitions: [
  *     (1) [
  *       - childInstance (parameter Y)
  *         repetitions: [
  *           0, 1, 9   // Parameter Y is repeatable and has 1 to 3 values
  *         ]
- *       ...
  *     ]
  *     (2) [
  *       - childInstance (parameter Y)
- *         repetitions: [
- *           4, 2
- *         ]
- *       ...
+ *         repetitions: [ 4, 2 ]
  *     ]
  *   ]
  *
@@ -120,6 +100,11 @@
  * During instance generation, a HTML string is generated for the initial form.
  * When all initial instances have been created, this HTML string is inserted
  * into the form container (`#haddockform > .content`).
+ *
+ * If the user has uploaded a formdata.json file, component instances from the
+ * formData structure will be merged into the instances list, overwriting values
+ * and adding repetitions.
+ *
  * At this point, event handlers can be attached to the form.
  *
  * The initial HTML and instances as generated above are also stored in
@@ -130,8 +115,8 @@
  *
  * TODO:
  *
- * Some issues that may need to be solved sooner or later, but don't currently
- * break the script's functionality:
+ * Some issues that may be resolved sooner or later, but don't break the
+ * script's functionality:
  *
  * - renderComponents() and makeSection() contain duplicated code.
  *
@@ -139,22 +124,20 @@
  *   readable and easier to understand. However, this would introduce additional
  *   difficulties with caching (we can't serialize function objects).
  *
- * - The necessity of client-side caching may need to be re-evaluated. Caching was
- *   considered necessary before certain "optimalizatons" were dropped, because
- *   of slow HTML generation. Form building has sped up significantly since this
- *   decision was made, to the point where loading times were about 1s on fast
- *   PCs.
- *   Dropping the cache would simplify some code and make OO possible (see above)
+ * - The necessity of client-side caching may need to be re-evaluated. Caching
+ *   was considered necessary because of slow HTML generation. However, form
+ *   building has sped up significantly over time, to the point where loading
+ *   times were about 1s on fast PCs.
+ *   Dropping the cache would simplify some code and simplify implementation of OO.
  *
  * - Radio buttons for choice datatypes with few options are currently not supported
  *
  * - Check boxes for true/false choices are currently not supported
  */
 
-// Don't add properties to global scope
+// Don't pollute the global scope.
 $(function(){
 
-	// Avoid modifying global variables, bring them into local scope.
 	var formLevels     = window.formLevels;
 	var formLevelIndex = window.formLevelIndex;
 	var userLevel      = window.userLevel;
@@ -176,10 +159,15 @@ $(function(){
 
 	var formVersion = null;
 
+	/**
+	 * Called when the user does something that changes the instances list.
+	 */
 	function onFormChange(){
 		formHasChanged = true;
 
 		$('#haddockform .formdata-links ul li.current').each(function(){
+			// This is only applicable for browsers that don't support Blobs / Blob URLs.
+			// See onSaveData().
 			$(this).find('a').css('textDecoration', 'line-through');
 			$(this).html($(this).html()
 				+ ' <span class="dark grey">'
@@ -662,6 +650,7 @@ $(function(){
 
 		var formData = {
 			form_version: formVersion,
+			timestamp:    Date.now(),
 			level:        formLevels[formLevelIndex],
 			instances:    ordered ? [] : {}
 		};
@@ -687,6 +676,10 @@ $(function(){
 		return formData;
 	}
 
+	/**
+	 * Called when the 'Save Values' button is pressed.
+	 * Generates a formdata.json file.
+	 */
 	function onSaveData(e){
 		onSaveData.saveCount = ++onSaveData.saveCount || 1;
 
@@ -1281,12 +1274,10 @@ $(function(){
 					componentCallback,
 					(
 						hidden
-						? 0
-						: (
-							component.repeat
-							? weight * component.repeat_min
-							: weight
-						)
+							? 0
+							: component.repeat
+								? weight * component.repeat_min
+								: weight
 					)
 				);
 			}else{
@@ -1438,71 +1429,208 @@ $(function(){
 	 *
 	 * @param c_callback called on completion
 	 */
-	function finalizeForm(c_callback){
-		async.series([
-			function(callback){
-				// Attach all event handlers here.
-				// Only use delegated event handlers to avoid having to reattach
-				// them when spawning extra component instances.
+	function finalizeForm(){
+		// Attach all event handlers here.
+		// Use delegated event handlers to avoid having to reattach them when
+		// spawning extra component instances.
 
-				$('#haddockform').on('click', 'section:not([class~="dummy"]) header', function(e){
-					toggleSection($(this).parent('section'));
-				});
+		$('#haddockform').on('click', 'section:not([class~="dummy"]) header', function(e){
+			toggleSection($(this).parent('section'));
+		});
 
-				$('#haddockform').on('focus', 'input[type="text"]', function(e){
-					// Automatically select input element contents on focus
-					$(this).one('mouseup', function(){
-						$(this).select();
-						return false;
-					})
-					$(this).select();
-				});
+		$('#haddockform').on('focus', 'input[type="text"]', function(e){
+			// Automatically select input element contents on focus
+			$(this).one('mouseup', function(){
+				$(this).select();
+				return false;
+			})
+			$(this).select();
+		});
 
-				$('#haddockform').on('change', 'input, select', function(e){
-					onFormChange();
+		$('#haddockform').on('change', 'input, select', function(e){
+			onFormChange();
 
-					if(Config.showResetButton){
-						if($(this).is('input[type="text"]') || $(this).is('select')){
-							var buttonSet = $(this).parent('.value').find('.buttonset');
-							if($(this).val() == $(this).attr('data-default')){
-								buttonSet.find('.reset').addClass('invisible');
-							}else if($(this).attr('data-default') !== ''){
-								buttonSet.find('.reset').removeClass('invisible');
+			if(Config.showResetButton){
+				if($(this).is('input[type="text"]') || $(this).is('select')){
+					var buttonSet = $(this).parent('.value').find('.buttonset');
+					if($(this).val() == $(this).attr('data-default')){
+						buttonSet.find('.reset').addClass('invisible');
+					}else if($(this).attr('data-default') !== ''){
+						buttonSet.find('.reset').removeClass('invisible');
+					}
+				}else if($(this).is('.buttongroup')){
+					// TODO: Radio buttons are currently not supported
+					//buttonSet.find('.reset').removeClass('invisible');
+				}
+			}
+		});
+
+		$('#haddockform').on('click', '.buttonset i.reset',  onResetButton);
+		$('#haddockform').on('click', '.buttonset i.minus',  onMinusButton);
+		$('#haddockform').on('click', '.buttonset i.plus',   onPlusButton );
+
+		$('.levelchooser').on('click', 'li', function(e){
+			setLevel($(this).data('name'));
+		});
+
+		$('#haddockform').on('submit', onSubmit);
+		$('#f_savedata').on('click', onSaveData);
+
+		// Fold all sections
+		$('#haddockform section').each(function(){ toggleSection(this, true); });
+		// Set form level
+		// This also enables the submit button
+		setLevel(formLevel, true);
+		$('#f_savedata').prop('disabled', false);
+		// Show the form
+		$('.loading').addClass('hidden');
+		$('#haddockform').removeClass('hidden');
+		formReady = true;
+	}
+
+	/**
+	 * Fill in form parameters based on supplied formData
+	 *
+	 * @param formData the formData structure
+	 */
+	function loadFormData(formData){
+		if(formData === null)
+			return;
+
+		console.log('loading form data (timestamp ' + formData.timestamp + ')');
+
+		// FormData may not be exactly in line with our model version due to changes to run.cns.
+		// Problems that can't be fixed by us will be reported through the following arrays.
+		var missingInstances   = []; // { type: ['section'|'parameter'], name: Str }
+		var obsoleteInstances  = []; // { type: ['section'|'parameter'], name: Str }
+		var missingRepetitions = []; // { type: ['section'|'parameter'], name: Str, expected: Int, got: Int }
+		var extraRepetitions   = []; // { type: ['section'|'parameter'], name: Str, expected: Int, got: Int }
+		var deniedInstances    = []; // { type: ['section'|'parameter'], name: Str, requirement: Str }
+
+		/**
+		 * Recursively fill in component instances with supplied formData instances.
+		 *
+		 * @param instances form component instances
+		 * @param suppliedInstances formData instances
+		 */
+		function loadInstances(instances, suppliedInstances){
+			for(var i=0; i<instances.length; i++){
+				var instance  = instances[i];
+				var component = instance.component;
+
+				// Skip data-less component types.
+				if(['section', 'parameter'].indexOf(component.type) === -1)
+					continue;
+
+				var componentName = component.type === 'section' ? component.label : component.name;
+
+				if(componentName in suppliedInstances){
+					var suppliedInstance = suppliedInstances[componentName];
+					var repeatMin = (
+						component.repeat
+							? component.repeat_min
+							: 1
+					);
+
+					var repeatMax = (
+						component.repeat
+							? component.repeat_max === null
+								? Infinity
+								: component.repeat_max
+							: 1
+					);
+
+					if(suppliedInstance.length < repeatMin){
+						// Not enough supplied repetitions.
+						missingRepetitions.push({
+							type:     'section',
+							name:     componentName,
+							expected: repeatMin,
+							got:      suppliedInstance.length
+						});
+					}else if(suppliedInstance.length > repeatMax){
+						// Too many supplied repetitions.
+						extraRepetitions.push({
+							type:     'section',
+							name:     componentName,
+							expected: repeatMax,
+							got:      suppliedInstance.length
+						});
+					}
+
+					// Repeat within bounds.
+					for(var j=0; j<Math.min(suppliedInstance.length, repeatMax); j++){
+						if(component.type === 'section'){
+							if(j >= repeatMin)
+								// TODO: Prevent automatic unfolding of added section repetitions.
+								addSectionRepetition(instance);
+							loadInstances(instance.repetitions[j], suppliedInstance[j]);
+						}else if(component.type === 'parameter'){
+							if(j >= repeatMin)
+								addParameterRepetition(instance);
+
+							var inputElement = $(
+								'#haddockform'
+								+ ' .row[data-global-instance-index="' + instance.globalIndex + '"]'
+								+ ' .values.table'
+								+ ' .value[data-repetition="' + j + '"]'
+								+ ' ' + (component.datatype === 'choice' ? 'select' : 'input')
+							);
+
+							// TODO: Detect access level changes and fill deniedInstances[].
+							//       Warn when the instance can no longer be accessed but a value was set in formData.
+
+							// TODO: Detect missing choice parameter values.
+
+							if(''+suppliedInstance[j] != ''+component.default){
+								// TODO: Show reset button.
+								inputElement.val(suppliedInstance[j]);
 							}
-						}else if($(this).is('.buttongroup')){
-							// TODO: Radio buttons are currently not supported
-							//buttonSet.find('.reset').removeClass('invisible');
 						}
 					}
-				});
 
-				$('#haddockform').on('click', '.buttonset i.reset',  onResetButton);
-				$('#haddockform').on('click', '.buttonset i.minus',  onMinusButton);
-				$('#haddockform').on('click', '.buttonset i.plus',   onPlusButton );
-
-				$('.levelchooser').on('click', 'li', function(e){
-					setLevel($(this).data('name'));
-				});
-
-				$('#haddockform').on('submit', onSubmit);
-				$('#f_savedata').on('click', onSaveData);
-
-				callback();
-			},
-			function(callback){
-				// Fold all sections
-				$('#haddockform section').each(function(){ toggleSection(this, true); });
-				// Set form level
-				// This also enables the submit button
-				setLevel(formLevel, true);
-				$('#f_savedata').prop('disabled', false);
-				// Show the form
-				$('.loading').addClass('hidden');
-				$('#haddockform').removeClass('hidden');
-				formReady = true;
-				async.nextTick(callback);
+					// Remove used formData instance.
+					delete suppliedInstances[componentName];
+				}else{
+					// Instance should exist in formData but doesn't.
+					missingInstances.push({
+						type: 'section',
+						name: componentName
+					});
+					console.log('an instance of component "' + componentName + '" is missing in the following formData instances list: ');
+					console.log(suppliedInstances);
+				}
 			}
-		], c_callback);
+
+			// Find obsolete instances in formData.
+			for(var componentName in suppliedInstances){
+				instance = suppliedInstances[componentName];
+
+				// We can ignore instances that don't have a single repetition.
+				if(instance.length){
+					obsoleteInstances.push({
+						type: ((instance[0] instanceof Array) ? 'section' : 'parameter'),
+						name: componentName
+					});
+				}
+			}
+		}
+
+		loadInstances(rootInstances, formData.instances);
+
+		console.log('form updated with supplied instances');
+
+		// TODO: Replace the following with user-friendly warning messages.
+		console.log('===== missing instances:');
+		console.log(missingInstances);
+		console.log('===== obsolete instances:');
+		console.log(obsoleteInstances);
+		console.log('===== missing repetitions:');
+		console.log(missingRepetitions);
+		console.log('===== extra repetitions:');
+		console.log(extraRepetitions);
+		console.log('===== denied instances:');
+		console.log(deniedInstances);
 	}
 
 	/**
@@ -1748,8 +1876,9 @@ $(function(){
 	 * by using the localStorage cache or by generating it on page load using buildForm().
 	 *
 	 * @param forceRenew when true, no attempt is made to load the form from cache
+	 * @param formData an optional formData object that will be used to fill in parameter values
 	 */
-	function loadForm(forceRenew, form_data){
+	function loadForm(forceRenew, formData){
 		/**
 		 * Convert a JSON string to an object with validation.
 		 */
@@ -1819,6 +1948,7 @@ $(function(){
 
 				console.log('successfully loaded form version ' + modelVersionTag);
 				// We should now have the form and all required JS objects loaded.
+				loadFormData(formData);
 				finalizeForm();
 			});
 		}else{
@@ -1834,6 +1964,7 @@ $(function(){
 					$('#haddockform > .content').html(result);
 					storeForm(result, componentData, componentInstances, rootInstances, function(){
 						// componentInstances should not be modified before it is saved
+						loadFormData(formData);
 						finalizeForm();
 					});
 				}
@@ -1848,9 +1979,9 @@ $(function(){
 		// Doing an indexOf on the entire query string is a bit hacky,
 		// but we do not have any other parameters, so it's OK for now.
 		if(window.location.search.indexOf('nocache') === -1)
-			loadForm();
+			loadForm(false, window.formData);
 		else
-			loadForm(true);
+			loadForm(true, window.formData);
 	});
 
 	// For debugging

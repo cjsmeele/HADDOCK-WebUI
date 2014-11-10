@@ -5,7 +5,11 @@
 
 	<title>{{ title }}</title>
 
-	<!-- IE 8 does not support HTML5 elements out-of-the-box -->
+	<!--
+		IE 8 does not support HTML5 elements out-of-the-box.
+		We do not support IE browsers, but we need to be able to show a
+		warning message anyway.
+	-->
 	<!--[if lt IE 9]>
 	<script src="{{ url_for('static', filename='lib/html5shiv.js') }}"></script>
 	<![endif]-->

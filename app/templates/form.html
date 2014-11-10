@@ -26,9 +26,8 @@
 		var modelMtime  = {{ model_mtime | round(0, 'floor') | int}};
 
 		var modelVersionTag = '{{ version_tag }}';
-		'v{{ al_mtime | round(0, 'floor') | int }}-'
-			+ '{{ model_mtime | round(0, 'floor') | int }}';
 
+		// Form components (sections, parameters, paragraphs).
 		var formComponents = {{ model | tojson | safe }};
 
 		// Uploaded form data, if any.
@@ -96,7 +95,6 @@
 		</div>
 		<div class="formdata-links hidden">
 			<p>
-				<!-- To save your filled in information, right click the following link and press "Save link as...". -->
 				The following file contains all current parameter values. You can upload this file later to continue filling in the form or to restart a run.
 			</p>
 			<p>
