@@ -1975,6 +1975,9 @@ $(function(){
 	// }}}
 
 	async.nextTick(function(){
+		if(User.browser === 'IE' && User.browserVersion < 10){
+			$('.ie-notice').removeClass('hidden');
+		}
 		// Don't load from localStorage if the query string contains "nocache".
 		// Doing an indexOf on the entire query string is a bit hacky,
 		// but we do not have any other parameters, so it's OK for now.

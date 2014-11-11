@@ -11,13 +11,18 @@ div.error {
 }
 
 div.warning {
-	background: #eeb;
+	background: #feb;
 	border: 1px solid #cc6;
 }
 
 div.error {
 	background: #ebb;
 	border: 1px solid #c66;
+}
+
+div.warning p,
+div.error p {
+	line-height: 15px;
 }
 
 /*   Loading progressbar {{{ */
