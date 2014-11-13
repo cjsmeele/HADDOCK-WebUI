@@ -417,8 +417,9 @@ $(function(){
 	 * Add a section repetition.
 	 *
 	 * @param instance the section's instance
+	 * @param toggleFolding whether to toggle folding for the children of the added section repetition, defaults to true
 	 */
-	function addSectionRepetition(instance){
+	function addSectionRepetition(instance, toggleFolding){
 		var sectionRow = $('#haddockform .row[data-global-instance-index="' + instance.globalIndex + '"]');
 
 		// Repetition count is used by makeButtonSet(), update it first.
@@ -444,10 +445,12 @@ $(function(){
 			rowsToHide.find('> .values input, > .values select').prop('disabled', true);
 		}
 
-		// Fold the new sections' child sections. Keep the section itself unfolded.
-		sectionEl.find('section').each(function(){
-			toggleSection($(this), true);
-		});
+		if(typeof(toggleFolding) === 'undefined' || toggleFolding){
+			// Toggle the sections' child sections' folding.
+			sectionEl.find('section').each(function(){
+				toggleSection($(this), true);
+			});
+		}
 
 		// Show and hide add / remove buttons
 		if(instance.repetitionCount > 1){
@@ -1563,8 +1566,7 @@ $(function(){
 					for(var j=0; j<Math.min(suppliedInstance.length, repeatMax); j++){
 						if(component.type === 'section'){
 							if(j >= repeatMin)
-								// TODO: Prevent automatic unfolding of added section repetitions.
-								addSectionRepetition(instance);
+								addSectionRepetition(instance, false);
 							loadInstances(instance.repetitions[j], suppliedInstance[j]);
 						}else if(component.type === 'parameter'){
 							if(j >= repeatMin)
@@ -1593,7 +1595,7 @@ $(function(){
 				}else{
 					// Instance should exist in formData but doesn't.
 					missingInstances[componentName] = {
-						type: component.type,
+						type: component.type
 					};
 					hasWarnings = true;
 					console.log('an instance of component "' + componentName + '" is missing in the following formData instances list: ');
