@@ -1506,6 +1506,7 @@ $(function(){
 		var   missingInstances = { }; /// name => { type: ['section'|'parameter'] }
 		var  obsoleteInstances = { }; /// name => { type: ['section'|'parameter'] }
 		var    deniedInstances = { }; /// name => { type: ['section'|'parameter'], requirement: Str }
+		var unavailableOptions = { }; /// name => { type: ['parameter'], selectedValue: Str, newValue: Str }
 		var missingRepetitions = { }; /// name => { type: ['section'|'parameter'], expected: Int, got: Int }
 		var   extraRepetitions = { }; /// name => { type: ['section'|'parameter'], expected: Int, got: Int }
 
@@ -1581,13 +1582,25 @@ $(function(){
 							);
 
 							// TODO: Detect access level changes and fill deniedInstances[].
-							// TODO: Detect missing choice parameter values.
 
 							if(''+suppliedInstance[j] != ''+component.default && component.datatype !== 'file'){
-								inputElement.val(suppliedInstance[j]);
+								// Instance's value from formData differs from the default value.
+								if(component.datatype === 'choice' && component.options.indexOf(''+suppliedInstance[j]) === -1){
+									// Component is a 'choice' parameter and the selected option from formData is not available.
+									unavailableOptions[componentName] = {
+										type:          'parameter',
+										selectedValue: ''+suppliedInstance[j],
+										newValue:      ''+component.default
+									};
+									hasWarnings = true;
+								}else{
+									// Set the parameter to the supplied value.
+									inputElement.val(suppliedInstance[j]);
 
-								inputElement.parent('.value').find('.buttonset').find('.reset')
-									.removeClass('invisible');
+									// Show the reset button.
+									inputElement.parent('.value').find('.buttonset').find('.reset')
+										.removeClass('invisible');
+								}
 							}
 						}
 					}
@@ -1644,6 +1657,14 @@ $(function(){
 			pushWarning((obsoleteInstances[componentName].type === 'section' ? 'Section' : 'Parameter') + ' "' + componentName
 				+ '" no longer exists and has been removed.');
 		}
+		for(var componentName in deniedInstances){
+			pushWarning((extraRepetitions[componentName].type === 'section' ? 'Section' : 'Parameter') + ' "' + componentName
+				+ '" is no longer accessible at your access level, please switch to the ' + deniedInstances[componentName].requirement + ' level to set this parameter.');
+		}
+		for(var componentName in unavailableOptions){
+			pushWarning('Option "' + unavailableOptions[componentName].selectedValue + '" for parameter "' + componentName
+				+ '" is no longer available. Parameters with this value have been reset to "' + unavailableOptions[componentName].newValue + '".');
+		}
 		for(var componentName in missingRepetitions){
 			pushNotice((missingRepetitions[componentName].type === 'section' ? 'Section' : 'Parameter') + ' "' + componentName
 				+ '" did not have enough repetitions. ' + (missingRepetitions[i].expected - missingRepetitions[i].got) + ' repetition(s) were added with default values.');
@@ -1651,10 +1672,6 @@ $(function(){
 		for(var componentName in extraRepetitions){
 			pushWarning((extraRepetitions[componentName].type === 'section' ? 'Section' : 'Parameter') + ' "' + componentName
 				+ '" had too many repetitions. The last ' + (extraRepetitions[i].got - extraRepetitions[i].expected) + ' repetition(s) have been removed.');
-		}
-		for(var componentName in deniedInstances){
-			pushWarning((extraRepetitions[componentName].type === 'section' ? 'Section' : 'Parameter') + ' "' + componentName
-				+ '" is no longer accessible at your access level, please switch to the ' + deniedInstances[componentName].requirement + ' level to set this parameter.');
 		}
 
 		if(hasWarnings){
@@ -1667,12 +1684,14 @@ $(function(){
 		console.log(missingInstances);
 		console.log('obsolete instances:');
 		console.log(obsoleteInstances);
+		console.log('denied instances:');
+		console.log(deniedInstances);
+		console.log('unavailable options:');
+		console.log(unavailableOptions);
 		console.log('missing repetitions:');
 		console.log(missingRepetitions);
 		console.log('extra repetitions:');
 		console.log(extraRepetitions);
-		console.log('denied instances:');
-		console.log(deniedInstances);
 
 		$('.formdata-notices #formdata-notices-toggle').click(function(e){
 			var noticesEl = $('.formdata-notices .notices');
