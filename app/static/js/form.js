@@ -1583,9 +1583,11 @@ $(function(){
 							// TODO: Detect access level changes and fill deniedInstances[].
 							// TODO: Detect missing choice parameter values.
 
-							if(''+suppliedInstance[j] != ''+component.default){
-								// TODO: Show reset button.
+							if(''+suppliedInstance[j] != ''+component.default && component.datatype !== 'file'){
 								inputElement.val(suppliedInstance[j]);
+
+								inputElement.parent('.value').find('.buttonset').find('.reset')
+									.removeClass('invisible');
 							}
 						}
 					}
