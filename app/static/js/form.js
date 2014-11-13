@@ -567,7 +567,7 @@ $(function(){
 	 * Package a section or parameter component instance for submission.
 	 *
 	 * @param instance a parameter or section instance
-	 * @param ordered whether to use the old ordered formdata format
+	 * @param ordered whether to use the ordered formdata format
 	 */
 	function packageInstance(instance, ordered){
 		if(instance.component.type !== 'section' && instance.component.type !== 'parameter'){
@@ -597,20 +597,19 @@ $(function(){
 		for(var i=0; i<instance.repetitionCount; i++){
 			// For each repetition...
 
-			// We do not leave out parameters that we shouldn't have access to.
-			// It is the server's job to check what parameters we can and cannot set.
-
 			if(instance.component.type === 'section'){
 				var repetition = ordered ? [] : {}; // Contains child instances
 
 				for(var j=0; j<instance.repetitions[i].length; j++){
 					// For each child instance...
-					if(instance.repetitions[i][j].component.type === 'section'
-							|| instance.repetitions[i][j].component.type === 'parameter'){
-
+					if(['section', 'parameter'].indexOf(instance.repetitions[i][j].component.type) !== -1){
 						if(ordered){
 							repetition.push(packageInstance(instance.repetitions[i][j], ordered));
 						}else{
+							// Do not save unaccessible instances in non-ordered mode.
+							if(instance.repetitions[i][j].component.accesslevels.indexOf(formLevels[formLevelIndex]) === -1)
+								continue;
+
 							repetition[
 								instance.repetitions[i][j].component.type === 'section'
 									? instance.repetitions[i][j].component.label
@@ -658,11 +657,15 @@ $(function(){
 
 		// Create an acyclic tree structure to hold all section and parameter instances.
 		for(var i=0; i<rootInstances.length; i++){
-			if(rootInstances[i].component.type !== 'section'
-					&& rootInstances[i].component.type !== 'parameter'){
-				// Filter out data-less component types
+
+			// Filter out data-less component types.
+			if(['section', 'parameter'].indexOf(rootInstances[i].component.type) === -1)
 				continue;
-			}
+
+			// Only save unaccessable instances in 'ordered' mode.
+			if(!ordered && rootInstances[i].component.accesslevels.indexOf(formLevels[formLevelIndex]) === -1)
+				continue;
+
 			if(ordered){
 				formData.instances.push(packageInstance(rootInstances[i], ordered));
 			}else{
@@ -1505,7 +1508,6 @@ $(function(){
 		// Multiple errors of the same type for the same component will be dropped (only the last warning of each type is saved).
 		var   missingInstances = { }; /// name => { type: ['section'|'parameter'] }
 		var  obsoleteInstances = { }; /// name => { type: ['section'|'parameter'] }
-		var    deniedInstances = { }; /// name => { type: ['section'|'parameter'], requirement: Str }
 		var unavailableOptions = { }; /// name => { type: ['parameter'], selectedValue: Str, newValue: Str }
 		var missingRepetitions = { }; /// name => { type: ['section'|'parameter'], expected: Int, got: Int }
 		var   extraRepetitions = { }; /// name => { type: ['section'|'parameter'], expected: Int, got: Int }
@@ -1528,6 +1530,13 @@ $(function(){
 					continue;
 
 				var componentName = component.type === 'section' ? component.label : component.name;
+
+				// Skip components the user doesn't have access to.
+				if(component.accesslevels.indexOf(formLevels[formLevelIndex]) === -1){
+					if(componentName in suppliedInstances)
+						delete suppliedInstances[componentName];
+					continue;
+				}
 
 				if(componentName in suppliedInstances){
 					var suppliedInstance = suppliedInstances[componentName];
@@ -1581,8 +1590,6 @@ $(function(){
 								+ ' ' + (component.datatype === 'choice' ? 'select' : 'input')
 							);
 
-							// TODO: Detect access level changes and fill deniedInstances[].
-
 							if(''+suppliedInstance[j] != ''+component.default && component.datatype !== 'file'){
 								// Instance's value from formData differs from the default value.
 								if(component.datatype === 'choice' && component.options.indexOf(''+suppliedInstance[j]) === -1){
@@ -1613,8 +1620,6 @@ $(function(){
 						type: component.type
 					};
 					hasWarnings = true;
-					console.log('an instance of component "' + componentName + '" is missing in the following formData instances list: ');
-					console.log(suppliedInstances);
 				}
 			}
 
@@ -1647,7 +1652,7 @@ $(function(){
 			);
 		}
 		function pushNotice(message){  pushMessage(message, 'notice',  'info-circle');  }
-		function pushWarning(message){ pushMessage(message, 'warning', 'warning'); }
+		function pushWarning(message){ pushMessage(message, 'warning', 'warning');      }
 
 		for(var componentName in missingInstances){
 			pushNotice((missingInstances[componentName].type === 'section' ? 'Section' : 'Parameter') + ' "' + componentName
@@ -1656,10 +1661,6 @@ $(function(){
 		for(var componentName in obsoleteInstances){
 			pushWarning((obsoleteInstances[componentName].type === 'section' ? 'Section' : 'Parameter') + ' "' + componentName
 				+ '" no longer exists and has been removed.');
-		}
-		for(var componentName in deniedInstances){
-			pushWarning((extraRepetitions[componentName].type === 'section' ? 'Section' : 'Parameter') + ' "' + componentName
-				+ '" is no longer accessible at your access level, please switch to the ' + deniedInstances[componentName].requirement + ' level to set this parameter.');
 		}
 		for(var componentName in unavailableOptions){
 			pushWarning('Option "' + unavailableOptions[componentName].selectedValue + '" for parameter "' + componentName
@@ -1684,8 +1685,6 @@ $(function(){
 		console.log(missingInstances);
 		console.log('obsolete instances:');
 		console.log(obsoleteInstances);
-		console.log('denied instances:');
-		console.log(deniedInstances);
 		console.log('unavailable options:');
 		console.log(unavailableOptions);
 		console.log('missing repetitions:');
