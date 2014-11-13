@@ -40,16 +40,29 @@
 		<h1>HADDOCK Form</h1>
 	</header>
 
+	<noscript>
+		<div class="warning">
+			<p><i class="fa fa-warning"></i>
+				JavaScript appears to be disabled in your browser.
+			</p>
+			<p>
+				This web application requires JavaScript to enable multiplication of input fields,
+				section folding and form level selection, and will not work correctly without it.
+				Please enable JavaScript support or use a different browser.
+			</p>
+		</div>
+	</noscript>
+
 	<section class="ie-notice hidden">
 		<div class="warning">
 			<p><i class="fa fa-warning"></i>
 				You appear to be using an Internet Explorer version older than 10,
-				which is not supported by this form.
+				that is not supported by this form.
 			</p>
 
 			<p>
-				Please consider switching to <a href="https://www.mozilla.org/en-US/firefox/new/">Mozilla Firefox</a>,
-				<a href="https://www.google.com/chrome/" title="(or Chromium)">Google Chrome</a>.<br />
+				Please consider switching to <a href="https://www.mozilla.org/en-US/firefox/new/">Mozilla Firefox</a>
+				or <a href="https://www.google.com/chrome/" title="(or Chromium)">Google Chrome</a>.<br />
 			</p>
 			<p>
 				Alternatively, you can upgrade Internet Explorer to the latest version.
@@ -57,16 +70,17 @@
 		</div>
 	</section>
 
-	<noscript>
-		<div class="warning">
-			<p><i class="fa fa-warning"></i>
-				JavaScript appears to be disabled in your browser.<br />
-				This web application requires JavaScript to enable multiplication of input fields,
-				section folding and form level selection, and will not work correctly without it.
-				Please enable JavaScript support or use a different browser.
-			</p>
-		</div>
-	</noscript>
+	<section class="formdata-notices hidden">
+		<header>
+			<h2>The form has been updated!</h2>
+			{# TODO insert timestamp here -#}
+		</header>
+		<p>
+			The formdata file you have supplied is out of date and has been translated to the new form version.</p><p>
+			Click <a href="#" id="formdata-notices-toggle">here</a> to see a list of changes and possible warnings.
+		</p>
+		<div class="notices folded"></div>
+	</section>
 
 	<ul class="levelchooser">
 		{% for level in accesslevels -%}

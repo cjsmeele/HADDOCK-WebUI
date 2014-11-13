@@ -2,17 +2,25 @@
 
 /* Warnings, errors, other messages {{{ */
 
+div.notice,
 div.warning,
 div.error {
-	margin: 10px 0;
-	padding: 5px;
+	margin: 8px 0;
+	padding: 5px 8px;
 	font-size: 12px;
 	border-radius: 2px;
+
+	box-shadow: 0 0 2px rgba(0,0,0,0.2);
+}
+
+div.notice {
+	background: #cdf;
+	border: 1px solid #abc;
 }
 
 div.warning {
 	background: #feb;
-	border: 1px solid #cc6;
+	border: 1px solid #dc6;
 }
 
 div.error {
@@ -20,10 +28,47 @@ div.error {
 	border: 1px solid #c66;
 }
 
+div.notice i,
+div.warning i,
+div.error i {
+	margin-right: 5px;
+}
+
+div.notice p,
 div.warning p,
 div.error p {
-	line-height: 15px;
+	line-height: 1.1;
 }
+
+.blink-once {
+	outline: 2px solid rgba(0,0,0,0.0);
+	-webkit-animation: blink 1s ease 400ms 1;
+	   -moz-animation: blink 1s ease 400ms 1;
+	        animation: blink 1s ease 400ms 1;
+}
+
+/* Blink keyframes {{{ */
+
+@-webkit-keyframes blink {
+	  0% { outline-color: rgba(0,0,0,0.0);      background-color: rgba(0,0,0,0);         }
+	  1% { outline-color: rgba(200,120,40,1.0); background-color: rgba(255,250,150,1.0); }
+	 40% { outline-color: rgba(200,120,40,1.0); background-color: rgba(255,250,150,1.0); }
+	100% { outline-color: rgba(0,0,0,0.0);      background-color: rgba(0,0,0,0);         }
+}
+@-moz-keyframes blink {
+	  0% { outline-color: rgba(0,0,0,0.0);      background-color: rgba(0,0,0,0);         }
+	  1% { outline-color: rgba(200,120,40,1.0); background-color: rgba(255,250,150,1.0); }
+	 40% { outline-color: rgba(200,120,40,1.0); background-color: rgba(255,250,150,1.0); }
+	100% { outline-color: rgba(0,0,0,0.0);      background-color: rgba(0,0,0,0);         }
+}
+@keyframes blink {
+	  0% { outline-color: rgba(0,0,0,0.0);      background-color: rgba(0,0,0,0);         }
+	  1% { outline-color: rgba(200,120,40,1.0); background-color: rgba(255,250,150,1.0); }
+	 40% { outline-color: rgba(200,120,40,1.0); background-color: rgba(255,250,150,1.0); }
+	100% { outline-color: rgba(0,0,0,0.0);      background-color: rgba(0,0,0,0);         }
+}
+
+/* }}} */
 
 /*   Loading progressbar {{{ */
 
@@ -68,9 +113,11 @@ div.loading .progress-container .progressbar.indeterminate {
 
 .levelchooser {
 	display: block;
-	margin-bottom: 14px;
-	box-shadow: 0 0 2px 1px rgba(0,0,0,0.2);
+	margin: 14px 0;
 	overflow: hidden;
+
+	box-shadow: 0 0 2px 1px rgba(0,0,0,0.2);
+	border-radius: 2px;
 }
 
 .levelchooser li {
@@ -118,6 +165,11 @@ div.loading .progress-container .progressbar.indeterminate {
 
 form.haddock .disabled {
 	color: #aaa;
+}
+
+section > p {
+	margin-top: 8px;
+	margin-bottom: 8px;
 }
 
 /*   Form sections {{{ */

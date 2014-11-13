@@ -10,9 +10,7 @@
  * This script is written in strict mode JavaScript. See:
  * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions_and_function_scope/Strict_mode#Changes_in_strict_mode
  *
- * We aim for compatibility with Firefox 24+, Chrome 33+, Safari 5.1+ and IE10+*.
- *
- * TODO: Display a warning when an incompatible browser is used.
+ * We aim for compatibility with Firefox 24+, Chrome 33+, Safari 5.1+ and IE10+.
  */
 
 /**
@@ -1501,11 +1499,14 @@ $(function(){
 
 		// FormData may not be exactly in line with our model version due to changes to run.cns.
 		// Problems that can't be fixed by us will be reported through the following arrays.
-		var missingInstances   = []; // { type: ['section'|'parameter'], name: Str }
-		var obsoleteInstances  = []; // { type: ['section'|'parameter'], name: Str }
-		var missingRepetitions = []; // { type: ['section'|'parameter'], name: Str, expected: Int, got: Int }
-		var extraRepetitions   = []; // { type: ['section'|'parameter'], name: Str, expected: Int, got: Int }
-		var deniedInstances    = []; // { type: ['section'|'parameter'], name: Str, requirement: Str }
+		// Multiple errors of the same type for the same component will be dropped (only the last warning of each type is saved).
+		var   missingInstances = { }; /// name => { type: ['section'|'parameter'] }
+		var  obsoleteInstances = { }; /// name => { type: ['section'|'parameter'] }
+		var    deniedInstances = { }; /// name => { type: ['section'|'parameter'], requirement: Str }
+		var missingRepetitions = { }; /// name => { type: ['section'|'parameter'], expected: Int, got: Int }
+		var   extraRepetitions = { }; /// name => { type: ['section'|'parameter'], expected: Int, got: Int }
+
+		var hasWarnings = false; // We cannot easily obtain the amount of keys on an object. Use this instead.
 
 		/**
 		 * Recursively fill in component instances with supplied formData instances.
@@ -1542,20 +1543,20 @@ $(function(){
 
 					if(suppliedInstance.length < repeatMin){
 						// Not enough supplied repetitions.
-						missingRepetitions.push({
+						missingRepetitions[componentName] = {
 							type:     'section',
-							name:     componentName,
 							expected: repeatMin,
 							got:      suppliedInstance.length
-						});
+						};
+						hasWarnings = true;
 					}else if(suppliedInstance.length > repeatMax){
 						// Too many supplied repetitions.
-						extraRepetitions.push({
+						extraRepetitions[componentName] = {
 							type:     'section',
-							name:     componentName,
 							expected: repeatMax,
 							got:      suppliedInstance.length
-						});
+						};
+						hasWarnings = true;
 					}
 
 					// Repeat within bounds.
@@ -1578,8 +1579,6 @@ $(function(){
 							);
 
 							// TODO: Detect access level changes and fill deniedInstances[].
-							//       Warn when the instance can no longer be accessed but a value was set in formData.
-
 							// TODO: Detect missing choice parameter values.
 
 							if(''+suppliedInstance[j] != ''+component.default){
@@ -1593,10 +1592,10 @@ $(function(){
 					delete suppliedInstances[componentName];
 				}else{
 					// Instance should exist in formData but doesn't.
-					missingInstances.push({
-						type: 'section',
-						name: componentName
-					});
+					missingInstances[componentName] = {
+						type: component.type,
+					};
+					hasWarnings = true;
 					console.log('an instance of component "' + componentName + '" is missing in the following formData instances list: ');
 					console.log(suppliedInstances);
 				}
@@ -1608,10 +1607,10 @@ $(function(){
 
 				// We can ignore instances that don't have a single repetition.
 				if(instance.length){
-					obsoleteInstances.push({
-						type: ((instance[0] instanceof Array) ? 'section' : 'parameter'),
-						name: componentName
-					});
+					obsoleteInstances[componentName] = {
+						type: (((typeof instance[0]) === 'object') ? 'section' : 'parameter')
+					};
+					hasWarnings = true;
 				}
 			}
 		}
@@ -1620,17 +1619,69 @@ $(function(){
 
 		console.log('form updated with supplied instances');
 
-		// TODO: Replace the following with user-friendly warning messages.
-		console.log('===== missing instances:');
+		function pushMessage(message, type, icon){
+			$('.formdata-notices .notices').append(
+				  '<div class="' + type + '">'
+					+ '<p>'
+						+ (typeof(icon) !== 'undefined' ? '<i class="fa fa-fw fa-' + icon + '"></i> ' : '')
+						+ $('<div/>').text(message).html()
+					+ '</p>'
+				+ '</div>'
+			);
+		}
+		function pushNotice(message){  pushMessage(message, 'notice',  'info-circle');  }
+		function pushWarning(message){ pushMessage(message, 'warning', 'warning'); }
+
+		for(var componentName in missingInstances){
+			pushNotice((missingInstances[componentName].type === 'section' ? 'Section' : 'Parameter') + ' "' + componentName
+				+ '" was added.');
+		}
+		for(var componentName in obsoleteInstances){
+			pushWarning((obsoleteInstances[componentName].type === 'section' ? 'Section' : 'Parameter') + ' "' + componentName
+				+ '" no longer exists and has been removed.');
+		}
+		for(var componentName in missingRepetitions){
+			pushNotice((missingRepetitions[componentName].type === 'section' ? 'Section' : 'Parameter') + ' "' + componentName
+				+ '" did not have enough repetitions. ' + (missingRepetitions[i].expected - missingRepetitions[i].got) + ' repetition(s) were added with default values.');
+		}
+		for(var componentName in extraRepetitions){
+			pushWarning((extraRepetitions[componentName].type === 'section' ? 'Section' : 'Parameter') + ' "' + componentName
+				+ '" had too many repetitions. The last ' + (extraRepetitions[i].got - extraRepetitions[i].expected) + ' repetition(s) have been removed.');
+		}
+		for(var componentName in deniedInstances){
+			pushWarning((extraRepetitions[componentName].type === 'section' ? 'Section' : 'Parameter') + ' "' + componentName
+				+ '" is no longer accessible at your access level, please switch to the ' + deniedInstances[componentName].requirement + ' level to set this parameter.');
+		}
+
+		if(hasWarnings){
+			$('.formdata-notices .notices').hide();
+			$('.formdata-notices').removeClass('hidden');
+			$('.formdata-notices').addClass('blink-once');
+		}
+
+		console.log('missing instances:');
 		console.log(missingInstances);
-		console.log('===== obsolete instances:');
+		console.log('obsolete instances:');
 		console.log(obsoleteInstances);
-		console.log('===== missing repetitions:');
+		console.log('missing repetitions:');
 		console.log(missingRepetitions);
-		console.log('===== extra repetitions:');
+		console.log('extra repetitions:');
 		console.log(extraRepetitions);
-		console.log('===== denied instances:');
+		console.log('denied instances:');
 		console.log(deniedInstances);
+
+		$('.formdata-notices #formdata-notices-toggle').click(function(e){
+			var noticesEl = $('.formdata-notices .notices');
+			noticesEl.toggleClass('folded');
+
+			if(noticesEl.hasClass('folded')){
+				noticesEl.fadeOut(100);
+			}else{
+				noticesEl.fadeIn(120);
+			}
+			e.preventDefault();
+			return false;
+		});
 	}
 
 	/**
