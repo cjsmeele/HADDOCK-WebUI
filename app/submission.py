@@ -7,6 +7,7 @@ import os
 import re
 import json
 import time
+import subprocess
 
 
 def handle_form_post(request, model):
@@ -67,8 +68,6 @@ def handle_form_post(request, model):
         #
         # The four problems above will be catched by CNSParser.
 
-        # TODO: How do we determine the output directory name?
-        #       Use a timestamp for now.
         output_directory = app.config['OUTPUT_ROOT'] + '/' + 'job_' + str(int(time.time()))
 
         if not os.path.exists(app.config['OUTPUT_ROOT']):
@@ -133,15 +132,17 @@ def handle_form_post(request, model):
         with open(output_directory + '/' + 'formdata.json', 'w') as formdata_file:
             json.dump(data, formdata_file, indent=4)
 
-        # TODO: Copy / link the template CNS to the job directory
-        # TODO: Call jsontocns.py
+        os.symlink(os.path.abspath(app.config['TEMPLATE_FILE']), output_directory + '/' + 'template.cns')
 
-        #return jsonify(success=False, message='Unimplemented.')
-        #return jsonify(success=True, message='Done.')
+        # Call jsontocns.py on the output directory.
+        subprocess.call([
+            app.config['JSON_TO_CNS'],
+            output_directory,
+        ])
+
         return jsonify(
             success=True,
             message='Form information stored in job directory "' + output_directory + '".\n'
-                  + 'Please run jsontocns.py manually. (see the examples/ directory in your CNSParser repository)'
         )
     else:
         return jsonify(success=False, message='Invalid POST format.')

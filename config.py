@@ -12,8 +12,12 @@ class Config(object):
     # TODO: Currently not supported
     RADIO_MAX = 3
 
+    # Location of the json-to-cns script from the CNSParser repository.
+    JSON_TO_CNS      = '../CNSParser/jsontocns.py'
+
     ACCESSLEVEL_FILE = './model/accesslevels.json'
     MODEL_FILE       = './model/model.json'
+    TEMPLATE_FILE    = './model/template.cns'
 
     # The default root directory under which to create output/job directories.
     # Can be overridden by the --output-root parameter

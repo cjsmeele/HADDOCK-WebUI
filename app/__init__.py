@@ -1,4 +1,5 @@
 from flask import Flask
+import os
 
 class HADDOCKApp(Flask):
     def __init__(self, name):
@@ -17,6 +18,12 @@ if app.config['CACHE_MODEL'] or app.config['CACHE_ACCESSLEVELS']:
     cache.init_app(app)
 else:
     cache = None
+
+assert os.path.exists(app.config['JSON_TO_CNS'])
+assert os.path.exists(app.config['ACCESSLEVEL_FILE'])
+assert os.path.exists(app.config['MODEL_FILE'])
+assert os.path.exists(app.config['TEMPLATE_FILE'])
+assert os.path.isdir(app.config['OUTPUT_ROOT'])
 
 # Set up logger
 import logging
