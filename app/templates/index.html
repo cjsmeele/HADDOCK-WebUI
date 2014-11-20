@@ -4,12 +4,19 @@
 	<header>
 		<h1>HADDOCK-WebUI</h1>
 	</header>
+	{% if error -%}
+		<div class="error">
+			<p><i class="fa fa-fw fa-times"></i>
+				{{ error }}
+			</p>
+		</div>
+	{% endif -%}
 	<section class="column width6-12">
 		<header>
 			<h2>Start a new run</h2>
 		</header>
 		<p>
-			<a href="{{ url_for('form') }}">HADDOCK form, any level</a>
+			<a href="{{ url_for('form') }}">HADDOCK form</a>
 			(<a href="{{ url_for('form', nocache='') }}">no cache</a>)
 		</p>
 	</section>

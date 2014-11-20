@@ -232,7 +232,7 @@ $(function(){
 
 			$('.levelwarning').html(
 				'<p>'
-				+ ' <i class="fa fa-warning"></i>'
+				+ ' <i class="fa fa-fw fa-warning"></i>'
 				+ ' Warning: Because your current access level is not high enough for the ' + name + ' interface,'
 				+ ' you will be unable to submit this form.'
 				+ ' Please <a href="mailto:/dev/null">request a higher access level</a> or choose a different form level above.'
@@ -739,6 +739,8 @@ $(function(){
 		//        To avoid this problem, the form element now has the 'novalidate' attribute.
 		//        We should probably call the validation function manually on input value change.
 
+		var retryMessage = 'If errors persist, please save your parameter values and try again in a few minutes.';
+
 		try {
 			var postData = new FormData();
 			var formData = makeFormData();
@@ -747,7 +749,7 @@ $(function(){
 			var fileInstances = { };
 
 			$('#haddockform input[type="file"]').each(function(){
-				// Use the component, instance and repetition numbers as a field name for submitted files
+				// Use the component, instance and repetition numbers as a field name for submitted files.
 				var componentIndex      = $(this).parents('.row').data('data-index');
 				var globalInstanceIndex = $(this).parents('.row').data('global-instance-index');
 				var localInstanceIndex  = null;
@@ -782,16 +784,15 @@ $(function(){
 			$.ajax({
 				method:      'post',
 				url:         Config.postURL,
-				//data:        { json: JSON.stringify(postData) },
 				data:        postData,
 				dataType:    'json',
 				processData: false,
 				contentType: false
 			}).done(function(data){
 				if(!('success' in data) || (data.success !== true && !('message' in data))){
-					alert('Error: Could not submit form');
+					alert("The form could not be submitted\n" + retryMessage);
 				}else if(data.success !== true){
-					alert('Error: Could not submit form: ' + data.message);
+					alert("The form could not be submitted: " + data.message);
 				}else{
 					// OK
 					console.log('form submitted successfully');
@@ -799,11 +800,18 @@ $(function(){
 						alert(data.message);
 				}
 			}).error(function(xhr, status, err){
-				alert('Error: Could not submit form: ' + err.message);
+				console.log(status);
+				console.log(err);
+				if(err !== null && typeof(err) === 'object' && 'message' in err && err.message.length)
+					alert("The form could not be submitted: " + err.message + "\n" + retryMessage);
+				else if(typeof(err) === 'string' && err.length)
+					alert("The form could not be submitted: " + err + "\n" + retryMessage);
+				else
+					alert("The form could not be submitted, please check your network connection." + "\n" + retryMessage);
 			});
 		}catch(ex){
-			// This catches JSON stringify errors
-			alert('Error: Could not submit form');
+			// This catches JSON stringify errors.
+			alert("The form could not be submitted\n" + retryMessage);
 			console.log(ex);
 			throw(ex);
 		}finally{

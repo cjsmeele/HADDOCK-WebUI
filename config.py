@@ -41,6 +41,8 @@ class Config(object):
     # Max request size for POSTs (including all submitted files).
     MAX_CONTENT_LENGTH = 50 * 1024**2 # 50 MiB
 
+    IS_LOCAL = True
+
 
 # Default server configuration
 class ConfigServer(Config):
@@ -54,6 +56,8 @@ class ConfigServer(Config):
 
     USE_AUTH = True
 
+    IS_LOCAL = False
+
 # Default stand-alone configuration
 class ConfigLocal(Config):
     # When run locally, only allow connections from localhost and disable auth.
@@ -64,6 +68,8 @@ class ConfigLocal(Config):
 
     # Disable file upload size limit.
     MAX_CONTENT_LENGTH = None
+
+    IS_LOCAL = True
 
 
 configurations = {

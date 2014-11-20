@@ -1,4 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Oops, 500</h1>
+<h1>Sorry, something went wrong</h1>
+<p>
+	Please report this error to the webmaster.
+</p>
+<p>
+	Retry submitting your request or return to the <a href="{{ url_for('index') }}">index page</a>.
+</p>
 {% endblock %}

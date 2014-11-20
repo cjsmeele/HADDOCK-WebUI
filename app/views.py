@@ -35,7 +35,7 @@ def render_form(model, user_accesslevel, form_data=None):
 
 @app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template('index.html', title='HADDOCK-WebUI')
 
 @app.route('/form', methods=['GET', 'POST'])
 def form():
@@ -47,12 +47,26 @@ def form():
 
     elif request.method == 'POST':
         if 'action' in request.args and request.args['action'] == 'resume':
-            assert 'form_data' in request.files;
-            form_data = json.load(request.files['form_data'])
+            if not 'form_data' in request.files or len(request.files['form_data'].filename) == 0:
+                return render_template('index.html', title='HADDOCK-WebUI',
+                    error='No formdata.json file was uploaded.')
+            try:
+                form_data = json.load(request.files['form_data'])
+            except:
+                return render_template('index.html', title='HADDOCK-WebUI',
+                    error='Sorry, the uploaded formdata file is corrupt and could not be loaded.')
 
             # NOTE: Files are not stored in formdata.json, they will have to be re-uploaded.
 
             return render_form(model, len(model.accesslevel_data)-1, form_data)
         else:
             # POST handling is done in submission.py.
-            return handle_form_post(request, model)
+            try:
+                return handle_form_post(request, model)
+            except Exception:
+                # handle_form_post() should return errors as json strings.
+                # An exception indicates a bug.
+                return json.dumps({
+                    'success': False,
+                    'message': 'An internal server error occured, please report this error to the webmaster.'
+                })

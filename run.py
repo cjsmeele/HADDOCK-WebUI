@@ -53,8 +53,6 @@ if __name__ == '__main__':
 
     args = argparser.parse_args()
 
-    from app import app
-
     if args.config not in config.configurations:
         print(
             'Error: Configuration set \'' + args.config + '\' does not exist.'
@@ -68,6 +66,7 @@ if __name__ == '__main__':
     config.config = config.configurations[args.config]
     cfg           = config.config
 
+    from app import app
 
     # Apply arguments to the config object.
     if args.host is not None:

@@ -1,4 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Oops, 404</h1>
+<h1>The requested page does not exist</h1>
+<p>
+	If you came here by following a link on this website, please report this problem to the webmaster.
+</p>
+<p>
+	Go back in your browser or return to the <a href="{{ url_for('index') }}">index page</a>.
+</p>
 {% endblock %}

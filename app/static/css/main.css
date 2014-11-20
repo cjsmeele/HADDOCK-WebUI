@@ -417,5 +417,79 @@ form.nice input[type="submit"] {
 	/* margin-left: 40%; */
 }
 
+p {
+	margin: 5px 0;
+}
+
+/* }}} */
+/* }}} */
+/* Warnings, errors, other messages {{{ */
+
+div.notice,
+div.warning,
+div.error {
+	margin: 8px 0;
+	padding: 2px 8px;
+	font-size: 12px;
+	border-radius: 2px;
+
+	box-shadow: 0 0 2px rgba(0,0,0,0.2);
+}
+
+div.notice {
+	background: #cdf;
+	border: 1px solid #abc;
+}
+
+div.warning {
+	background: #feb;
+	border: 1px solid #dc6;
+}
+
+div.error {
+	background: #ebb;
+	border: 1px solid #c66;
+}
+
+div.notice i,
+div.warning i,
+div.error i {
+	margin-right: 5px;
+}
+
+div.notice p,
+div.warning p,
+div.error p {
+	margin: 2px 0;
+}
+
+.blink-once {
+	outline: 2px solid rgba(0,0,0,0.0);
+	-webkit-animation: blink 1s ease 400ms 1;
+	   -moz-animation: blink 1s ease 400ms 1;
+	        animation: blink 1s ease 400ms 1;
+}
+
+/* Blink keyframes {{{ */
+
+@-webkit-keyframes blink {
+	  0% { outline-color: rgba(0,0,0,0.0);      background-color: rgba(0,0,0,0);         }
+	  1% { outline-color: rgba(200,120,40,1.0); background-color: rgba(255,250,150,1.0); }
+	 40% { outline-color: rgba(200,120,40,1.0); background-color: rgba(255,250,150,1.0); }
+	100% { outline-color: rgba(0,0,0,0.0);      background-color: rgba(0,0,0,0);         }
+}
+@-moz-keyframes blink {
+	  0% { outline-color: rgba(0,0,0,0.0);      background-color: rgba(0,0,0,0);         }
+	  1% { outline-color: rgba(200,120,40,1.0); background-color: rgba(255,250,150,1.0); }
+	 40% { outline-color: rgba(200,120,40,1.0); background-color: rgba(255,250,150,1.0); }
+	100% { outline-color: rgba(0,0,0,0.0);      background-color: rgba(0,0,0,0);         }
+}
+@keyframes blink {
+	  0% { outline-color: rgba(0,0,0,0.0);      background-color: rgba(0,0,0,0);         }
+	  1% { outline-color: rgba(200,120,40,1.0); background-color: rgba(255,250,150,1.0); }
+	 40% { outline-color: rgba(200,120,40,1.0); background-color: rgba(255,250,150,1.0); }
+	100% { outline-color: rgba(0,0,0,0.0);      background-color: rgba(0,0,0,0);         }
+}
+
 /* }}} */
 /* }}} */

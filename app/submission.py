@@ -13,9 +13,6 @@ import subprocess
 def handle_form_post(request, model):
     # Our return value (which should be JSON encoded) will be passed back to the client.
 
-    #print request.form.keys()
-    #print request.files
-
     if 'json' in request.form:
         try:
             data = json.loads(request.form['json'])
@@ -26,8 +23,11 @@ def handle_form_post(request, model):
             if data['form_version'] != model.get_version_tag():
                 return jsonify(
                     success=False,
-                    message='The data model has changed since you loaded this form,'
-                            ' please reload and try again.'
+                    message='The data model has changed since you loaded this form. To submit your form using the new model, please follow these steps:\n\n'
+                            '1) Save your parameter values using the "Save values" button\n'
+                            '2) Go back to the index page using the link at the top of this form\n'
+                            '3) Upload the saved formdata\n'
+                            '4) Submit the updated form'
                 )
 
             accesslevel_names = [ level['name'] for level in model.accesslevel_data ]
@@ -78,11 +78,6 @@ def handle_form_post(request, model):
             run_no += 1
 
         os.mkdir(output_directory)
-
-        #print(json.dumps(data,
-        #    sort_keys=True,
-        #    indent=(4),
-        #))
 
         # Allowing the client to set the paths/names of uploaded files would be
         # dangerous, we make this list ourselves.
@@ -140,9 +135,15 @@ def handle_form_post(request, model):
             output_directory,
         ])
 
-        return jsonify(
-            success=True,
-            message='Form information stored in job directory "' + output_directory + '".\n'
-        )
+        if app.config['IS_LOCAL']:
+            return jsonify(
+                success=True,
+                message='Form information stored in job directory "' + output_directory + '".\n'
+            )
+        else:
+            return jsonify(
+                success=True,
+                message='Form submission succesful.\n'
+            )
     else:
         return jsonify(success=False, message='Invalid POST format.')
