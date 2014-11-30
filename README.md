@@ -50,9 +50,7 @@ SEE ALSO
 LICENSE
 -------
 
-To be decided.
-
-Do not copy or redistribute this development version.
+See LICENSE.
 
 AUTHOR
 ------
